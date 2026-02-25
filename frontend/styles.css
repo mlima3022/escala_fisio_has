@@ -332,8 +332,9 @@ main {
 
 .day-cell .count {
   margin-top: 8px;
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   color: var(--muted);
+  line-height: 1.1;
 }
 
 .day-cell .open-day {
@@ -341,6 +342,8 @@ main {
   margin-top: 9px;
   background: #eef3ff;
   border-color: #cfdbef;
+  font-size: 0.82rem;
+  padding: 6px 6px;
 }
 
 .list-row {
@@ -609,26 +612,26 @@ pre {
   }
 
   .calendar-grid {
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
   }
 
   .day-cell {
-    min-height: 68px;
+    min-height: 72px;
     padding: 5px;
     border-radius: 8px;
   }
 
   .day-cell .count {
     margin-top: 3px;
-    font-size: 0.66rem;
+    font-size: 0.72rem;
     line-height: 1.15;
   }
 
   .day-cell .open-day {
     margin-top: 4px;
     padding: 5px 4px;
-    font-size: 0.68rem;
+    font-size: 0.72rem;
   }
 
   .list-row {

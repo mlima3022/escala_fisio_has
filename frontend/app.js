@@ -293,7 +293,7 @@ function updateAuthUi() {
   el.importTabBtn.classList.toggle("hidden", !isAdmin);
 
   if (!isLogged) {
-    setAuthInfo("Você está em modo público. Login Google é necessário apenas para importação.");
+    setAuthInfo("");
   } else if (isAdmin) {
     setAuthInfo(`Logado como ${state.profile?.email}. Acesso admin liberado.`);
   } else {
@@ -425,8 +425,8 @@ function renderCalendar() {
     cells.push(`
       <div class="day-cell ${todayClass}">
         <div><strong>${day}</strong></div>
-        <div class="count">${count} escalado(s)</div>
-        <button class="open-day" data-day="${day}">Ver detalhes</button>
+        <div class="count"><span class="count-number">${count}</span> <span class="count-label">esc.</span></div>
+        <button class="open-day" data-day="${day}">Detalhes</button>
       </div>
     `);
   }
