@@ -420,13 +420,15 @@ function renderCalendar() {
   for (let i = 0; i < firstWeekday; i += 1) cells.push('<div class="day-cell disabled"></div>');
 
   for (let day = 1; day <= daysInMonth; day += 1) {
-    const count = (byDay.get(day) || []).length;
+    const rowsForDay = byDay.get(day) || [];
+    const workingRowsForDay = rowsForDay.filter((row) => !NON_WORK_CODES.includes(row.code));
+    const count = workingRowsForDay.length;
     const todayClass = isCurrentMonth && day === today.getDate() ? "today" : "";
     cells.push(`
       <div class="day-cell ${todayClass}">
         <div><strong>${day}</strong></div>
         <div class="count"><span class="count-number">${count}</span> <span class="count-label">esc.</span></div>
-        <button class="open-day" data-day="${day}">Detalhes</button>
+        ${count > 0 ? `<button class="open-day" data-day="${day}">Detalhes</button>` : ""}
       </div>
     `);
   }
@@ -438,7 +440,7 @@ function renderCalendar() {
 }
 
 function showDayDetails(day, rows) {
-  const rowsForDay = rows.filter((r) => r.day === day);
+  const rowsForDay = rows.filter((r) => r.day === day && !NON_WORK_CODES.includes(r.code));
   const grouped = rowsForDay.reduce((acc, row) => {
     if (!acc[row.sector]) acc[row.sector] = [];
     acc[row.sector].push(row);
@@ -611,9 +613,9 @@ async function renderProfessional() {
           </div>
           <div class="workday-meta">${escapeHtml(r.sector)} • Código: <strong>${escapeHtml(r.code)}</strong></div>
           <div class="workday-meta">Função: ${escapeHtml(r.role || "-")} • Horário: ${escapeHtml(r.shift_hours || "-")}</div>
-          <div style="margin-top:8px;">
+          ${isOff ? "" : `<div style="margin-top:8px;">
             <button class="show-coworkers" data-day="${r.day}" data-sector="${escapeHtml(r.sector)}" data-employee="${employee.id}" data-schedule="${schedule.id}">👥 Ver companheiros do dia</button>
-          </div>
+          </div>`}
         </div>
       `;
     })
