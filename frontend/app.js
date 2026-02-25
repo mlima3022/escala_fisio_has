@@ -452,23 +452,23 @@ async function showCoworkers({ day, sector, employeeId, scheduleId }) {
 
 async function handleParsePdf() {
   if (!state.profile?.is_admin) {
-    el.importStatus.textContent = "Apenas admin pode importar.";
+    setImportStatus("Apenas admin pode importar.", true);
     return;
   }
 
   const file = el.pdfInput.files?.[0];
   if (!file) {
-    el.importStatus.textContent = "Selecione um PDF antes de processar.";
+    setImportStatus("Selecione um arquivo PDF/CSV antes de processar.", true);
     return;
   }
 
   const parserUrl = getEffectiveParserUrl();
   if (!parserUrl) {
-    el.importStatus.textContent = "PARSER_API_URL não configurado em config.js.";
+    setImportStatus("PARSER_API_URL não configurado em config.js.", true);
     return;
   }
 
-  el.importStatus.textContent = "Processando PDF...";
+  setImportStatus("Processando arquivo...");
 
   const body = new FormData();
   body.append("file", file);
@@ -482,16 +482,20 @@ async function handleParsePdf() {
 
     const json = await response.json();
     validateParsedPayload(json);
+    const parsedAssignments = countParsedAssignments(json);
+    if (!parsedAssignments) {
+      throw new Error("Arquivo processado sem lançamentos de dias. Verifique o CSV/PDF.");
+    }
 
     state.parsedPayload = json;
     el.previewBox.textContent = JSON.stringify(json, null, 2);
     el.saveBtn.disabled = false;
-    el.importStatus.textContent = "PDF processado. Revise o preview e clique em salvar.";
+    setImportStatus(`Arquivo processado com ${parsedAssignments} lançamento(s). Revise o preview e clique em salvar.`);
   } catch (error) {
     console.error(error);
     state.parsedPayload = null;
     el.saveBtn.disabled = true;
-    el.importStatus.textContent = `Erro no parse: ${error.message}`;
+    setImportStatus(`Erro no parse: ${error.message}`, true);
   }
 }
 
@@ -510,7 +514,12 @@ function validateParsedPayload(payload) {
 
 async function handleSaveParsedData() {
   if (!state.parsedPayload) {
-    el.importStatus.textContent = "Nenhum parse disponível.";
+    setImportStatus("Nenhum parse disponível.", true);
+    return;
+  }
+
+  if (!countParsedAssignments(state.parsedPayload)) {
+    setImportStatus("Não há lançamentos para salvar. Revise o arquivo importado.", true);
     return;
   }
 
@@ -533,13 +542,13 @@ async function handleSaveParsedData() {
 
 async function persistParsedData(payload, { overwrite, existingSchedule }) {
   if (!state.profile?.is_admin) {
-    el.importStatus.textContent = "Apenas admin pode salvar.";
+    setImportStatus("Apenas admin pode salvar.", true);
     return;
   }
 
   const { metadata, sectors, legend } = payload;
 
-  el.importStatus.textContent = "Salvando no banco...";
+  setImportStatus("Salvando no banco...");
 
   try {
     let scheduleId;
@@ -643,13 +652,32 @@ async function persistParsedData(payload, { overwrite, existingSchedule }) {
       }
     }
 
-    el.importStatus.textContent = overwrite ? "Escala sobrescrita com sucesso." : "Escala salva com sucesso.";
+    const savedCount = assignmentRows.length;
+    setImportStatus(
+      overwrite
+        ? `Escala sobrescrita com sucesso. ${savedCount} lançamento(s) gravado(s).`
+        : `Escala salva com sucesso. ${savedCount} lançamento(s) gravado(s).`
+    );
     await loadEmployees();
     await refreshCalendarData();
     await renderProfessional();
   } catch (error) {
     console.error(error);
-    el.importStatus.textContent = `Erro ao salvar: ${error.message}`;
+    setImportStatus(`Erro ao salvar: ${error.message}`, true);
+  }
+}
+
+function countParsedAssignments(payload) {
+  return (payload?.sectors || []).reduce((accS, sector) => {
+    return accS + (sector.employees || []).reduce((accE, emp) => accE + Object.keys(emp.days || {}).length, 0);
+  }, 0);
+}
+
+function setImportStatus(message, isError = false) {
+  el.importStatus.textContent = message;
+  el.importStatus.style.color = isError ? "#af2f2f" : "";
+  if (isError) {
+    window.alert(message);
   }
 }
 
