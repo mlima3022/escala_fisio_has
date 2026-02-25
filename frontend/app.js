@@ -68,7 +68,7 @@ async function init() {
 
 function bindEvents() {
   el.loginBtn.addEventListener("click", async () => {
-    const redirectTo = `${window.location.origin}${window.location.pathname}`;
+    const redirectTo = getOAuthRedirectUrl();
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo }
@@ -652,4 +652,10 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function getOAuthRedirectUrl() {
+  const configuredBase = window.APP_CONFIG?.APP_BASE_URL?.trim();
+  if (configuredBase) return configuredBase;
+  return `${window.location.origin}${window.location.pathname}`;
 }
