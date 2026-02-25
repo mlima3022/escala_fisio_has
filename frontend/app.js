@@ -611,8 +611,8 @@ async function renderProfessional() {
             <span class="workday-date">${emoji} ${r.day}/${month}/${year}</span>
             <span class="workday-badge">${status}</span>
           </div>
-          <div class="workday-meta">${escapeHtml(r.sector)} • Código: <strong>${escapeHtml(r.code)}</strong></div>
-          <div class="workday-meta">Função: ${escapeHtml(r.role || "-")} • Horário: ${escapeHtml(r.shift_hours || "-")}</div>
+          ${isOff ? "" : `<div class="workday-meta">${escapeHtml(r.sector)} • Código: <strong>${escapeHtml(r.code)}</strong></div>
+          <div class="workday-meta">Função: ${escapeHtml(r.role || "-")} • Horário: ${escapeHtml(r.shift_hours || "-")}</div>`}
           ${isOff ? "" : `<div style="margin-top:8px;">
             <button class="show-coworkers" data-day="${r.day}" data-sector="${escapeHtml(r.sector)}" data-employee="${employee.id}" data-schedule="${schedule.id}">👥 Ver companheiros do dia</button>
           </div>`}
