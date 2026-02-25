@@ -301,10 +301,6 @@ function updateAuthUi() {
 
   if (!isAdmin && getActiveTab() === "import") setActiveTab("professional");
 
-  if (!isLogged) {
-    el.topbarMenuPanel.classList.add("hidden");
-    el.topMenuBtn.setAttribute("aria-expanded", "false");
-  }
 }
 
 function setAuthInfo(msg) {
@@ -472,6 +468,8 @@ async function loadEmployees() {
 
   if (current && state.employees.some((e) => e.id === current)) {
     el.employeeSelect.value = current;
+  } else if (state.employees.length) {
+    el.employeeSelect.value = state.employees[0].id;
   }
 }
 
