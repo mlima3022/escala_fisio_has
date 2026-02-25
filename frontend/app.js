@@ -49,14 +49,12 @@ const el = {
   profContents: {
     calendar: document.getElementById("profCalendarContent"),
     workdays: document.getElementById("profWorkdaysContent"),
-    coworkers: document.getElementById("profCoworkersContent"),
     info: document.getElementById("profInfoContent")
   },
 
   profSummary: document.getElementById("profSummary"),
   nextWorkday: document.getElementById("nextWorkday"),
   profAssignments: document.getElementById("profAssignments"),
-  coworkersPanel: document.getElementById("coworkersPanel"),
   employeeInfoPanel: document.getElementById("employeeInfoPanel"),
   codeStatsPanel: document.getElementById("codeStatsPanel"),
   employeeCalendarGrid: document.getElementById("employeeCalendarGrid"),
@@ -73,7 +71,11 @@ const el = {
   previewBox: document.getElementById("previewBox"),
   overwriteModal: document.getElementById("overwriteModal"),
   confirmOverwrite: document.getElementById("confirmOverwrite"),
-  cancelOverwrite: document.getElementById("cancelOverwrite")
+  cancelOverwrite: document.getElementById("cancelOverwrite"),
+  coworkersModal: document.getElementById("coworkersModal"),
+  coworkersModalTitle: document.getElementById("coworkersModalTitle"),
+  coworkersModalBody: document.getElementById("coworkersModalBody"),
+  closeCoworkersModal: document.getElementById("closeCoworkersModal")
 };
 
 init().catch((err) => {
@@ -168,6 +170,11 @@ function bindEvents() {
   el.cancelOverwrite.addEventListener("click", () => {
     state.overwriteContext = null;
     el.overwriteModal.classList.add("hidden");
+  });
+
+  el.closeCoworkersModal.addEventListener("click", () => el.coworkersModal.classList.add("hidden"));
+  el.coworkersModal.addEventListener("click", (ev) => {
+    if (ev.target === el.coworkersModal) el.coworkersModal.classList.add("hidden");
   });
 }
 
@@ -340,6 +347,8 @@ function renderCalendar() {
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstWeekday = new Date(year, month - 1, 1).getDay();
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
 
   const filtered = state.currentAssignments.filter((row) => {
     const bySector = selectedSector === "ALL" || row.sector === selectedSector;
@@ -358,8 +367,9 @@ function renderCalendar() {
 
   for (let day = 1; day <= daysInMonth; day += 1) {
     const count = (byDay.get(day) || []).length;
+    const todayClass = isCurrentMonth && day === today.getDate() ? "today" : "";
     cells.push(`
-      <div class="day-cell">
+      <div class="day-cell ${todayClass}">
         <div><strong>${day}</strong></div>
         <div class="count">${count} escalado(s)</div>
         <button class="open-day" data-day="${day}">Ver detalhes</button>
@@ -443,7 +453,6 @@ async function renderProfessional() {
 
   el.profSummary.innerHTML = "Selecione um profissional.";
   el.profAssignments.innerHTML = "";
-  el.coworkersPanel.textContent = "Selecione um dia na aba \"Dias de Trabalho\".";
   el.nextWorkday.textContent = "";
   el.employeeInfoPanel.textContent = "Selecione um profissional.";
   el.codeStatsPanel.textContent = "";
@@ -529,7 +538,6 @@ async function renderProfessional() {
         employeeId: btn.dataset.employee,
         scheduleId: btn.dataset.schedule
       });
-      setActiveProfTab("coworkers");
     });
   });
 
@@ -551,6 +559,8 @@ async function renderProfessional() {
 function renderEmployeeCalendar(rows, month, year) {
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstWeekday = new Date(year, month - 1, 1).getDay();
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === year && (today.getMonth() + 1) === month;
 
   const byDay = new Map(rows.map((r) => [r.day, r]));
   const cells = [];
@@ -560,8 +570,9 @@ function renderEmployeeCalendar(rows, month, year) {
     const row = byDay.get(day);
     const code = row?.code || "-";
     const status = row ? (NON_WORK_CODES.includes(row.code) ? "Folga" : "Trabalho") : "Sem registro";
+    const todayClass = isCurrentMonth && day === today.getDate() ? "today" : "";
     cells.push(`
-      <div class="day-cell">
+      <div class="day-cell ${todayClass}">
         <div><strong>${day}</strong></div>
         <div class="count">${escapeHtml(code)} | ${escapeHtml(status)}</div>
       </div>
@@ -582,14 +593,20 @@ async function showCoworkers({ day, sector, employeeId, scheduleId }) {
 
   if (error) throw error;
 
+  const month = Number(el.profMonth.value);
+  const year = Number(el.profYear.value);
+  el.coworkersModalTitle.textContent = `Companheiros em ${day}/${month}/${year} - ${sector}`;
+
   if (!data?.length) {
-    el.coworkersPanel.textContent = "Nenhum colega encontrado para esse dia/setor.";
+    el.coworkersModalBody.textContent = "Nenhum colega encontrado para esse dia/setor.";
+    el.coworkersModal.classList.remove("hidden");
     return;
   }
 
-  el.coworkersPanel.innerHTML = data
+  el.coworkersModalBody.innerHTML = data
     .map((row) => `<div class="list-row"><span>${escapeHtml(row.employees?.name || "-")} (${escapeHtml(row.employees?.matricula || "-")})</span><span>${escapeHtml(row.code)}</span></div>`)
     .join("");
+  el.coworkersModal.classList.remove("hidden");
 }
 
 async function handleParseFile() {

@@ -281,6 +281,12 @@ main {
   background: #f9fbff;
 }
 
+.day-cell.today {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(255, 152, 0, 0.42);
+  background: #fff9ef;
+}
+
 .day-cell.disabled {
   background: #edf2f8;
   color: #8899b2;
@@ -365,7 +371,7 @@ pre {
   background: #ffffff;
   border-top: 1px solid var(--border);
   display: none;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .mnav-btn {

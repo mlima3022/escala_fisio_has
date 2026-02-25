@@ -58,7 +58,6 @@
       <nav class="sub-tabs">
         <button class="prof-tab active" data-proftab="calendar"><i class="fa-solid fa-calendar-day"></i> Calendário</button>
         <button class="prof-tab" data-proftab="workdays"><i class="fa-solid fa-list-check"></i> Dias de Trabalho</button>
-        <button class="prof-tab" data-proftab="coworkers"><i class="fa-solid fa-user-group"></i> Companheiros</button>
         <button class="prof-tab" data-proftab="info"><i class="fa-solid fa-circle-info"></i> Informações</button>
       </nav>
 
@@ -73,13 +72,6 @@
         <section class="card">
           <h3>Todos os Dias de Trabalho</h3>
           <div id="profAssignments"></div>
-        </section>
-      </section>
-
-      <section id="profCoworkersContent" class="prof-content">
-        <section class="card">
-          <h3>Com quem trabalha no dia selecionado</h3>
-          <div id="coworkersPanel">Selecione um dia na aba "Dias de Trabalho".</div>
         </section>
       </section>
 
@@ -141,7 +133,6 @@
   <nav class="mobile-nav">
     <button class="mnav-btn active" data-proftab="calendar"><i class="fa-solid fa-calendar-day"></i><span>Calendário</span></button>
     <button class="mnav-btn" data-proftab="workdays"><i class="fa-solid fa-list-check"></i><span>Trabalho</span></button>
-    <button class="mnav-btn" data-proftab="coworkers"><i class="fa-solid fa-user-group"></i><span>Equipe</span></button>
     <button class="mnav-btn" data-proftab="info"><i class="fa-solid fa-circle-info"></i><span>Info</span></button>
   </nav>
 
@@ -163,6 +154,16 @@
         <button id="confirmOverwrite">Sobrescrever</button>
         <button id="cancelOverwrite">Cancelar</button>
       </div>
+    </div>
+  </div>
+
+  <div id="coworkersModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="coworkersModalTitle">Companheiros no dia</h3>
+        <button id="closeCoworkersModal">Fechar</button>
+      </div>
+      <div id="coworkersModalBody"></div>
     </div>
   </div>
 
