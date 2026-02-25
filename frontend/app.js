@@ -19,6 +19,8 @@ const state = {
 const el = {
   loginBtn: document.getElementById("loginBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
+  topMenuBtn: document.getElementById("topMenuBtn"),
+  topbarMenuPanel: document.getElementById("topbarMenuPanel"),
   authInfo: document.getElementById("authInfo"),
   tabs: [...document.querySelectorAll(".main-tabs .tab")],
   tabContents: {
@@ -102,7 +104,37 @@ function bindEvents() {
   });
 
   el.logoutBtn.addEventListener("click", async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut({ scope: "local" });
+      if (error) throw error;
+      state.session = null;
+      state.profile = null;
+      updateAuthUi();
+      setAuthInfo("Sessão encerrada.");
+      setActiveTab("professional");
+    } catch (err) {
+      console.error(err);
+      window.alert(`Erro ao sair: ${err.message || err}`);
+    }
+  });
+
+  el.topMenuBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    const isHidden = el.topbarMenuPanel.classList.contains("hidden");
+    if (isHidden) {
+      el.topbarMenuPanel.classList.remove("hidden");
+      el.topMenuBtn.setAttribute("aria-expanded", "true");
+    } else {
+      el.topbarMenuPanel.classList.add("hidden");
+      el.topMenuBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  document.addEventListener("click", (ev) => {
+    if (el.topbarMenuPanel.classList.contains("hidden")) return;
+    if (el.topbarMenuPanel.contains(ev.target) || el.topMenuBtn.contains(ev.target)) return;
+    el.topbarMenuPanel.classList.add("hidden");
+    el.topMenuBtn.setAttribute("aria-expanded", "false");
   });
 
   supabase.auth.onAuthStateChange(async () => {
@@ -268,6 +300,11 @@ function updateAuthUi() {
   }
 
   if (!isAdmin && getActiveTab() === "import") setActiveTab("professional");
+
+  if (!isLogged) {
+    el.topbarMenuPanel.classList.add("hidden");
+    el.topMenuBtn.setAttribute("aria-expanded", "false");
+  }
 }
 
 function setAuthInfo(msg) {
@@ -520,11 +557,21 @@ async function renderProfessional() {
 
   el.profAssignments.innerHTML = rows
     .map((r) => {
-      const status = NON_WORK_CODES.includes(r.code) ? "FOLGA" : "TRABALHA";
+      const isOff = NON_WORK_CODES.includes(r.code);
+      const status = isOff ? "FOLGA" : "TRABALHA";
+      const emoji = isOff ? "😴" : "💪";
+      const itemClass = isOff ? "workday-item off workday-off" : "workday-item";
       return `
-        <div class="list-row">
-          <span>${r.day}/${month}/${year} | ${escapeHtml(r.sector)} | ${escapeHtml(r.code)} | ${status}</span>
-          <button class="show-coworkers" data-day="${r.day}" data-sector="${escapeHtml(r.sector)}" data-employee="${employee.id}" data-schedule="${schedule.id}">Com quem trabalha</button>
+        <div class="${itemClass}">
+          <div class="workday-head">
+            <span class="workday-date">${emoji} ${r.day}/${month}/${year}</span>
+            <span class="workday-badge">${status}</span>
+          </div>
+          <div class="workday-meta">${escapeHtml(r.sector)} • Código: <strong>${escapeHtml(r.code)}</strong></div>
+          <div class="workday-meta">Função: ${escapeHtml(r.role || "-")} • Horário: ${escapeHtml(r.shift_hours || "-")}</div>
+          <div style="margin-top:8px;">
+            <button class="show-coworkers" data-day="${r.day}" data-sector="${escapeHtml(r.sector)}" data-employee="${employee.id}" data-schedule="${schedule.id}">👥 Ver companheiros do dia</button>
+          </div>
         </div>
       `;
     })

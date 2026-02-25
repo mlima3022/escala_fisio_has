@@ -34,6 +34,13 @@ body {
   z-index: 20;
 }
 
+.topbar-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .topbar-main h1 {
   margin: 0;
   font-size: clamp(1.5rem, 2.8vw, 2rem);
@@ -47,11 +54,31 @@ body {
 .auth-actions {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  margin-top: 4px;
+}
+
+.topbar-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(4px);
+}
+
+.menu-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .topbar-controls {
-  margin-top: 12px;
+  margin-top: 8px;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -282,9 +309,20 @@ main {
 }
 
 .day-cell.today {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px rgba(255, 152, 0, 0.42);
-  background: #fff9ef;
+  border-color: #4568ff;
+  box-shadow: 0 12px 18px rgba(58, 87, 232, 0.22);
+  background: linear-gradient(145deg, #4f68f7 0%, #2a46d0 100%);
+  color: #fff;
+}
+
+.day-cell.today .count {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.day-cell.today .open-day {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.34);
+  color: #fff;
 }
 
 .day-cell.disabled {
@@ -312,6 +350,56 @@ main {
   gap: 8px;
   border-bottom: 1px solid #dbe3f0;
   padding: 8px 0;
+}
+
+.workday-item {
+  border: 1px solid #cddbf2;
+  border-left: 4px solid #3a57e8;
+  border-radius: 11px;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  padding: 10px 12px;
+  margin-bottom: 9px;
+}
+
+.workday-item.off {
+  border-left-color: #a7b4c8;
+  background: linear-gradient(180deg, #f4f7fb 0%, #ffffff 100%);
+}
+
+.workday-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.workday-date {
+  font-weight: 800;
+  color: #2a46d0;
+}
+
+.workday-off .workday-date {
+  color: #6c7d98;
+}
+
+.workday-badge {
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-weight: 700;
+  background: #e8f4ec;
+  color: #2c8c4f;
+}
+
+.workday-item.off .workday-badge {
+  background: #edf1f7;
+  color: #667990;
+}
+
+.workday-meta {
+  font-size: 0.87rem;
+  color: #455a79;
 }
 
 .import-row {
@@ -419,7 +507,7 @@ pre {
   }
 
   .calendar-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .topbar-controls {
@@ -437,5 +525,128 @@ pre {
 
   .sub-tabs {
     display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  body {
+    padding-bottom: 70px;
+  }
+
+  .topbar {
+    padding: 12px 10px;
+  }
+
+  .topbar-main h1 {
+    font-size: 1.35rem;
+  }
+
+  .muted-light {
+    font-size: 0.86rem;
+  }
+
+  .auth-actions {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .auth-actions button {
+    flex: 1;
+    padding: 8px 10px;
+    font-size: 0.84rem;
+  }
+
+  .control-field label {
+    font-size: 0.8rem;
+  }
+
+  .month-chip {
+    min-width: 130px;
+    font-size: 0.8rem;
+    padding: 8px;
+  }
+
+  main {
+    width: 97%;
+    margin-top: 10px;
+  }
+
+  .card {
+    padding: 10px;
+    border-radius: 10px;
+  }
+
+  .summary-card h3 {
+    font-size: 1.02rem;
+  }
+
+  .summary-grid .list-row {
+    padding: 8px;
+  }
+
+  .main-tabs {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .main-tabs .tab {
+    padding: 9px 8px;
+    font-size: 0.82rem;
+  }
+
+  .filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .filters label {
+    font-size: 0.8rem;
+  }
+
+  .filters select {
+    padding: 8px;
+    font-size: 0.86rem;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .day-cell {
+    min-height: 68px;
+    padding: 5px;
+    border-radius: 8px;
+  }
+
+  .day-cell .count {
+    margin-top: 3px;
+    font-size: 0.66rem;
+    line-height: 1.15;
+  }
+
+  .day-cell .open-day {
+    margin-top: 4px;
+    padding: 5px 4px;
+    font-size: 0.68rem;
+  }
+
+  .list-row {
+    font-size: 0.84rem;
+    gap: 6px;
+  }
+
+  .list-row button {
+    font-size: 0.72rem;
+    padding: 6px 8px;
+  }
+
+  .mobile-nav {
+    height: 66px;
+  }
+
+  .mnav-btn {
+    font-size: 0.68rem;
+    padding-bottom: 8px;
   }
 }

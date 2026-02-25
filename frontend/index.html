@@ -12,29 +12,36 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-main">
-      <h1 id="selectedEmployeeTitle">Escala de Fisioterapia</h1>
-      <p id="selectedEmployeeSubtitle" class="muted-light">Selecione um profissional para ver os detalhes.</p>
-    </div>
-    <div class="auth-actions">
-      <button id="loginBtn">Entrar com Google (Admin)</button>
-      <button id="logoutBtn" class="hidden">Sair</button>
-    </div>
-    <div class="topbar-controls">
-      <div class="control-field grow">
-        <label for="employeeSelect">Profissional</label>
-        <select id="employeeSelect">
-          <option value="">Selecione um profissional...</option>
-        </select>
+    <div class="topbar-head">
+      <div class="topbar-main">
+        <h1 id="selectedEmployeeTitle">Escala de Fisioterapia</h1>
+        <p id="selectedEmployeeSubtitle" class="muted-light">Selecione um profissional para ver os detalhes.</p>
       </div>
-      <div class="month-nav">
-        <button id="prevProfMonth" class="nav-btn" title="Mês anterior">&#x2039;</button>
-        <div id="profMonthLabel" class="month-chip">MÊS/ANO</div>
-        <button id="nextProfMonth" class="nav-btn" title="Próximo mês">&#x203A;</button>
+      <button id="topMenuBtn" class="menu-toggle" aria-expanded="false" aria-controls="topbarMenuPanel">
+        <i class="fa-solid fa-bars"></i> Menu
+      </button>
+    </div>
+    <div id="topbarMenuPanel" class="topbar-panel hidden">
+      <div class="auth-actions">
+        <button id="loginBtn">Entrar com Google (Admin)</button>
+        <button id="logoutBtn" class="hidden">Sair</button>
       </div>
-      <div class="hidden-selects">
-        <select id="profMonth"></select>
-        <select id="profYear"></select>
+      <div class="topbar-controls">
+        <div class="control-field grow">
+          <label for="employeeSelect">Profissional</label>
+          <select id="employeeSelect">
+            <option value="">Selecione um profissional...</option>
+          </select>
+        </div>
+        <div class="month-nav">
+          <button id="prevProfMonth" class="nav-btn" title="Mês anterior">&#x2039;</button>
+          <div id="profMonthLabel" class="month-chip">MÊS/ANO</div>
+          <button id="nextProfMonth" class="nav-btn" title="Próximo mês">&#x203A;</button>
+        </div>
+        <div class="hidden-selects">
+          <select id="profMonth"></select>
+          <select id="profYear"></select>
+        </div>
       </div>
     </div>
   </header>
