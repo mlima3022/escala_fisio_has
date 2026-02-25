@@ -22,6 +22,7 @@ Repositório completo (sem build step) para GitHub Pages com Supabase (Auth + Po
   sql/
     schema.sql
     rls.sql
+  render.yaml
   README.md
   .gitignore
 ```
@@ -35,8 +36,8 @@ Repositório completo (sem build step) para GitHub Pages com Supabase (Auth + Po
 ## 1) Passo a passo no Supabase
 
 1. Crie um projeto no Supabase.
-2. No **SQL Editor**, rode [`sql/schema.sql`](/c:/Users/Matheus/Documents/escala_fisio_has/sql/schema.sql).
-3. No **SQL Editor**, rode [`sql/rls.sql`](/c:/Users/Matheus/Documents/escala_fisio_has/sql/rls.sql).
+2. No **SQL Editor**, rode `sql/schema.sql`.
+3. No **SQL Editor**, rode `sql/rls.sql`.
 4. Verifique as tabelas em **Table Editor**:
    - `profiles`, `schedules`, `employees`, `assignments`, `code_legend`
 5. Em **Authentication -> URL Configuration**, configure as Redirect URLs.
@@ -112,7 +113,8 @@ Cadastre no Google OAuth Client:
 window.APP_CONFIG = {
   SUPABASE_URL: "https://SEU-PROJETO.supabase.co",
   SUPABASE_ANON_KEY: "SUA_ANON_KEY",
-  PARSER_API_URL: "http://localhost:8000/parse"
+  APP_BASE_URL: "https://SEUUSUARIO.github.io/SEUREPO/frontend/",
+  PARSER_API_URL: "https://SEU-BACKEND.onrender.com/parse"
 };
 ```
 
@@ -143,15 +145,57 @@ uvicorn main:app --reload --port 8000
 Healthcheck:
 - `http://localhost:8000/health`
 
+## Deploy no Render (parser)
+
+Opção 1 (manual no dashboard):
+
+- `Root Directory`: `backend`
+- `Build Command`: `pip install -r requirements.txt`
+- `Start Command`: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- `Health Check Path`: `/health`
+
+Opção 2 (Blueprint):
+
+- O arquivo `render.yaml` já está no repositório com essas configurações.
+
+## Troubleshooting
+
+### Erro no Render: `gunicorn your_application.wsgi` / `command not found`
+
+Causa: start command padrão errado.
+
+Correção:
+
+1. Abra o serviço no Render.
+2. Vá em **Settings -> Build & Deploy**.
+3. Ajuste **Start Command** para:
+
+```bash
+uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+4. Salve e clique em **Manual Deploy -> Deploy latest commit**.
+
+### Aviso no console Supabase: `Session ... issued in the future`
+
+Quando a diferença é de 1-2 segundos, normalmente é apenas skew de relógio e não bloqueia login.
+
+Se persistir:
+
+1. Ative sincronização automática de data/hora no sistema operacional.
+2. Faça hard refresh (`Ctrl+F5`).
+3. Limpe storage/cookies do domínio e teste de novo.
+
 ## Deploy no GitHub Pages
 
 - Faça push do repositório.
 - Em **Settings -> Pages**, selecione branch e pasta.
-- Recomendação para este layout: publicar a raiz e acessar `.../frontend/`.
+- Com esta estrutura, a app fica em `.../frontend/`.
+- Se quiser abrir pela raiz, mantenha o `index.html` de redirecionamento na raiz.
 
 ## Observações técnicas
 
-- O parser em [`backend/main.py`](/c:/Users/Matheus/Documents/escala_fisio_has/backend/main.py) já retorna no formato JSON obrigatório.
+- O parser em `backend/main.py` já retorna no formato JSON obrigatório.
 - A heurística de parsing textual deve ser ajustada ao layout real do PDF institucional (linhas/colunas).
 - O fluxo de sobrescrita:
   - Se `schedule(month, year)` existe: modal `Sobrescrever / Cancelar`
@@ -160,6 +204,6 @@ Healthcheck:
 
 ## Segurança
 
-- Não versione `frontend/config.js` com chaves reais.
+- Não versione `frontend/config.js` com chaves reais em projetos públicos.
 - Use sempre `anon key` no frontend.
 - Escrita é bloqueada por RLS para não-admin.
