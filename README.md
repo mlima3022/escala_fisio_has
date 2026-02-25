@@ -3,7 +3,7 @@
 Repositório completo (sem build step) para GitHub Pages com Supabase (Auth + Postgres + RLS):
 
 - Visualização pública de calendário e tela do profissional
-- Importação/sobrescrita de escala PDF restrita a admin
+- Importação/sobrescrita de escala PDF/CSV restrita a admin
 - Login Google somente para liberar aba de importação
 
 ## Estrutura
@@ -54,7 +54,7 @@ where email = 'SEUEMAIL@gmail.com';
 9. Teste a importação:
    - Login com Google
    - Aba `Importar`
-   - Upload PDF -> Preview -> Salvar
+   - Upload PDF/CSV -> Preview -> Salvar
 
 ## 2) Passo a passo no Google Cloud (OAuth)
 

@@ -54,6 +54,8 @@ MONTH_MAP = {
 }
 
 CODE_RE = re.compile(r"^[A-Z*]{1,4}$")
+VALID_CODE_TOKENS = {k.upper() for k in LEGEND_DEFAULT.keys()} | {"F"}
+LINE_CODE_RE = re.compile(r"^(?:\*{3}|FE|LC|SE|L|F|P|T|M|N|[PTMFN][A-Za-z]{2,4})$", re.IGNORECASE)
 
 
 @app.get("/health")
@@ -63,18 +65,28 @@ def health() -> dict[str, str]:
 
 @app.post("/parse")
 async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Arquivo deve ser PDF")
+    filename = file.filename or ""
+    lower_name = filename.lower()
+    if not (lower_name.endswith(".pdf") or lower_name.endswith(".csv")):
+        raise HTTPException(status_code=400, detail="Arquivo deve ser PDF ou CSV")
 
     content = await file.read()
     if not content:
-        raise HTTPException(status_code=400, detail="PDF vazio")
+        raise HTTPException(status_code=400, detail="Arquivo vazio")
 
-    pages = extract_pdf_pages(content)
-    full_text = "\n".join(page["text"] for page in pages)
+    if lower_name.endswith(".csv"):
+        full_text = decode_text_bytes(content)
+        metadata = parse_metadata(full_text, filename)
+        sectors = parse_sectors_from_lines(full_text.splitlines())
+    else:
+        pages = extract_pdf_pages(content)
+        full_text = "\n".join(page["text"] for page in pages)
+        metadata = parse_metadata(full_text, filename)
 
-    metadata = parse_metadata(full_text, file.filename)
-    sectors = parse_sectors(pages, full_text)
+        # Tenta parser por linhas (mais fiel ao layout da escala) e fallback para tabelas.
+        sectors_from_lines = parse_sectors_from_lines(full_text.splitlines())
+        sectors_from_tables = parse_sectors(pages, full_text)
+        sectors = pick_better_sectors(sectors_from_lines, sectors_from_tables)
 
     return {
         "metadata": metadata,
@@ -115,6 +127,151 @@ def parse_metadata(text: str, filename: str) -> dict[str, Any]:
         "year": year,
         "source_filename": filename,
     }
+
+
+def pick_better_sectors(
+    candidate_a: list[dict[str, Any]], candidate_b: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    def score(sectors: list[dict[str, Any]]) -> int:
+        employees = sum(len(s.get("employees", [])) for s in sectors)
+        assignments = 0
+        for sector in sectors:
+            for emp in sector.get("employees", []):
+                assignments += len(emp.get("days", {}))
+        return employees * 5 + assignments
+
+    return candidate_a if score(candidate_a) >= score(candidate_b) else candidate_b
+
+
+def parse_sectors_from_lines(lines: list[str]) -> list[dict[str, Any]]:
+    sectors = [{"name": name, "employees": []} for name in SECTOR_CANDIDATES]
+    index = {s["name"]: {} for s in sectors}
+    current_sector = SECTOR_CANDIDATES[0]
+
+    for raw_line in lines:
+        line = normalize_space(strip_csv_quotes(raw_line))
+        if not line:
+            continue
+
+        detected_sector = detect_sector_name(line)
+        if detected_sector:
+            current_sector = detected_sector
+            continue
+
+        if line.upper().startswith("MATR."):
+            continue
+
+        employee = parse_employee_line(line)
+        if employee:
+            merge_employee(index[current_sector], employee)
+
+    for sector in sectors:
+        sector["employees"] = sorted(
+            index[sector["name"]].values(), key=lambda x: x["name"].lower()
+        )
+
+    return sectors
+
+
+def parse_employee_line(line: str) -> dict[str, Any] | None:
+    m = re.match(r"^(\d{4,6})\s+(.+)$", line)
+    if not m:
+        return None
+
+    matricula = m.group(1)
+    rest = m.group(2)
+    tokens = rest.split()
+    if len(tokens) < 8:
+        return None
+
+    boundary = find_name_code_boundary(tokens)
+    if boundary is None:
+        return None
+
+    name_tokens = tokens[:boundary]
+    name = sanitize_person_name(" ".join(name_tokens))
+    if not name:
+        return None
+
+    day_tokens: list[str] = []
+    i = boundary
+    while i < len(tokens) and len(day_tokens) < 31 and is_line_code_token(tokens[i]):
+        day_tokens.append(normalize_line_code(tokens[i]))
+        i += 1
+
+    if not day_tokens:
+        return None
+
+    tail = tokens[i:]
+    role, shift_hours = split_role_and_shift(tail)
+
+    days = {str(day + 1): code for day, code in enumerate(day_tokens)}
+
+    return {
+        "matricula": matricula,
+        "name": name,
+        "role": role,
+        "shift_hours": shift_hours,
+        "days": days,
+    }
+
+
+def find_name_code_boundary(tokens: list[str]) -> int | None:
+    # Busca o primeiro ponto em que surge uma janela fortemente composta por codigos de escala.
+    for i in range(2, max(3, len(tokens) - 2)):
+        window = tokens[i : i + 10]
+        if len(window) < 6:
+            continue
+        code_count = sum(1 for t in window if is_line_code_token(t))
+        if code_count >= 6:
+            return i
+    return None
+
+
+def is_line_code_token(token: str) -> bool:
+    return bool(LINE_CODE_RE.fullmatch(token.strip()))
+
+
+def normalize_line_code(token: str) -> str:
+    cleaned = normalize_space(token)
+    if cleaned == "***":
+        return "***"
+    return cleaned[:1].upper() + cleaned[1:]
+
+
+def split_role_and_shift(tokens: list[str]) -> tuple[str, str]:
+    if not tokens:
+        return "", ""
+
+    shift_start = None
+    for idx, tok in enumerate(tokens):
+        upper = normalize_upper(tok)
+        if ":" in tok or "H" in upper or "AS" == upper or "A" == upper:
+            shift_start = idx
+            break
+
+    if shift_start is None:
+        return sanitize_free_text(" ".join(tokens)), ""
+
+    role = sanitize_free_text(" ".join(tokens[:shift_start]))
+    shift = sanitize_free_text(" ".join(tokens[shift_start:]))
+    return role, shift
+
+
+def strip_csv_quotes(line: str) -> str:
+    value = line.strip()
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return value[1:-1]
+    return value
+
+
+def decode_text_bytes(raw: bytes) -> str:
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")
 
 
 def parse_sectors(pages: list[dict[str, Any]], full_text: str) -> list[dict[str, Any]]:
@@ -160,13 +317,16 @@ def parse_textual_employees(text: str) -> list[dict[str, Any]]:
     results = []
     for line in text.splitlines():
         cleaned = normalize_space(line)
-        m = re.match(r"^(\d{4,})\s+([A-Za-zÀ-ÿ\s]{6,})$", cleaned)
+        m = re.match(r"^(\d{4,6})\s+(.+)$", cleaned)
         if not m:
+            continue
+        name = sanitize_person_name(m.group(2))
+        if not name:
             continue
         results.append(
             {
                 "matricula": m.group(1),
-                "name": normalize_space(m.group(2)),
+                "name": name,
                 "role": "",
                 "shift_hours": "",
                 "days": {},
@@ -207,8 +367,8 @@ def parse_employee_row(row: list[str], day_columns: dict[int, int]) -> dict[str,
     if not name:
         return None
 
-    role = row[name_idx + 1] if name_idx + 1 < len(row) else ""
-    shift_hours = row[name_idx + 2] if name_idx + 2 < len(row) else ""
+    role = sanitize_free_text(row[name_idx + 1]) if name_idx + 1 < len(row) else ""
+    shift_hours = sanitize_free_text(row[name_idx + 2]) if name_idx + 2 < len(row) else ""
 
     days: dict[str, str] = {}
     for idx, day in day_columns.items():
@@ -229,8 +389,8 @@ def parse_employee_row(row: list[str], day_columns: dict[int, int]) -> dict[str,
 
 def find_matricula(row: list[str]) -> tuple[int | None, str | None]:
     for idx, value in enumerate(row):
-        digits = only_digits(value)
-        if len(digits) >= 4:
+        digits = extract_first_matricula(value)
+        if digits:
             return idx, digits
     return None, None
 
@@ -238,9 +398,10 @@ def find_matricula(row: list[str]) -> tuple[int | None, str | None]:
 def find_name(row: list[str], start: int = 0) -> tuple[int, str] | tuple[None, None]:
     for idx in range(start, len(row)):
         value = row[idx]
-        if not is_probable_name(value):
+        cleaned_name = sanitize_person_name(value)
+        if not cleaned_name:
             continue
-        return idx, value
+        return idx, cleaned_name
     return None, None
 
 
@@ -286,7 +447,69 @@ def is_probable_name(value: str) -> bool:
     if re.search(r"\d", text):
         return False
     words = text.split()
-    return len(words) >= 2
+    if len(words) < 2:
+        return False
+
+    long_words = [w for w in words if len(w) >= 3]
+    one_char_words = [w for w in words if len(w) == 1]
+    if not long_words:
+        return False
+    if len(one_char_words) > len(words) // 2:
+        return False
+    if all(looks_like_code_token(w) for w in words):
+        return False
+    return True
+
+
+def sanitize_person_name(value: str) -> str:
+    text = normalize_space(value)
+    if not text:
+        return ""
+
+    tokens = text.split()
+    # Remove codigos no final, ex: "Mateus ... F F"
+    while tokens and looks_like_code_token(tokens[-1]):
+        tokens.pop()
+
+    cleaned = " ".join(tokens)
+    if not is_probable_name(cleaned):
+        return ""
+    return cleaned
+
+
+def sanitize_free_text(value: str) -> str:
+    text = normalize_space(value)
+    if not text:
+        return ""
+    tokens = text.split()
+    if tokens and all(looks_like_code_token(t) for t in tokens):
+        return ""
+    return text
+
+
+def looks_like_code_token(token: str) -> bool:
+    normalized = normalize_space(token).upper()
+    if not normalized:
+        return False
+    if normalized in VALID_CODE_TOKENS:
+        return True
+    return bool(re.fullmatch(r"[A-Z*]{1,3}", normalized))
+
+
+def extract_first_matricula(value: str) -> str:
+    text = normalize_space(value)
+    if not text:
+        return ""
+
+    # Prefere blocos reais de matricula (4-6 digitos), evita concatenar diversos codigos.
+    matches = re.findall(r"\b\d{4,6}\b", text)
+    if matches:
+        return matches[0]
+
+    digits = only_digits(text)
+    if 4 <= len(digits) <= 6:
+        return digits
+    return ""
 
 
 def normalize_space(value: str) -> str:
