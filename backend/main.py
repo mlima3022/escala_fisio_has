@@ -1,6 +1,8 @@
 ﻿from __future__ import annotations
 
 import io
+import json
+import os
 import re
 import unicodedata
 from typing import Any
@@ -9,7 +11,7 @@ import pdfplumber
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Escala Parser API", version="1.1.0")
+app = FastAPI(title="Escala Parser API", version="1.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -56,6 +58,7 @@ MONTH_MAP = {
 CODE_RE = re.compile(r"^[A-Z*]{1,4}$")
 VALID_CODE_TOKENS = {k.upper() for k in LEGEND_DEFAULT.keys()} | {"F"}
 LINE_CODE_RE = re.compile(r"^(?:\*{3}|FE|LC|SE|L|F|P|T|M|N|[PTMFN][A-Za-z]{2,4})$", re.IGNORECASE)
+AI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 
 @app.get("/health")
@@ -83,7 +86,6 @@ async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
         full_text = "\n".join(page["text"] for page in pages)
         metadata = parse_metadata(full_text, filename)
 
-        # Tenta parser por linhas (mais fiel ao layout da escala) e fallback para tabelas.
         sectors_from_lines = parse_sectors_from_lines(full_text.splitlines())
         sectors_from_tables = parse_sectors(pages, full_text)
         sectors = pick_better_sectors(sectors_from_lines, sectors_from_tables)
@@ -93,6 +95,234 @@ async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
         "sectors": sectors,
         "legend": LEGEND_DEFAULT,
     }
+
+
+@app.post("/parse-ai")
+async def parse_ai(file: UploadFile = File(...)) -> dict[str, Any]:
+    filename = file.filename or ""
+    lower_name = filename.lower()
+    if not (lower_name.endswith(".pdf") or lower_name.endswith(".csv")):
+        raise HTTPException(status_code=400, detail="Arquivo deve ser PDF ou CSV")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="OPENAI_API_KEY nao configurada no backend")
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Arquivo vazio")
+
+    if lower_name.endswith(".csv"):
+        extracted_text = decode_text_bytes(raw)
+    else:
+        pages = extract_pdf_pages(raw)
+        chunks: list[str] = []
+        for idx, page in enumerate(pages, start=1):
+            chunks.append(f"[PAGE {idx}]")
+            chunks.append(page.get("text", ""))
+            for t_idx, table in enumerate(page.get("tables", []), start=1):
+                chunks.append(f"[TABLE {idx}.{t_idx}]")
+                chunks.extend(table_to_lines(table))
+        extracted_text = "\n".join(chunks)
+
+    try:
+        payload = request_ai_payload(api_key, filename, extracted_text)
+        return normalize_ai_payload(payload, filename, extracted_text)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Falha no parse com IA: {exc}") from exc
+
+
+def request_ai_payload(api_key: str, filename: str, extracted_text: str) -> dict[str, Any]:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=api_key)
+
+    system_prompt = (
+        "Voce extrai escalas de fisioterapia e retorna SOMENTE JSON valido no formato solicitado. "
+        "Nao invente dados. Se um campo nao existir, retorne string vazia ou objeto vazio. "
+        "Mantenha matricula, nome, role, shift_hours e days por funcionario."
+    )
+
+    user_prompt = f"""
+Converta o texto abaixo para este formato JSON:
+
+{{
+  "metadata": {{
+    "month": 1,
+    "month_name": "JANEIRO",
+    "year": 2026,
+    "source_filename": "{filename}"
+  }},
+  "sectors": [
+    {{ "name": "Supervisão / diarista", "employees": [] }},
+    {{ "name": "Unidades 1, 2 e 5", "employees": [] }},
+    {{ "name": "CTI / UCO (Diurno)", "employees": [] }},
+    {{ "name": "CTI / UCO (Noturno)", "employees": [] }}
+  ],
+  "legend": {{
+    "P": "Plantão",
+    "T": "Tarde",
+    "M": "Manhã",
+    "N": "Noite",
+    "***": "Férias",
+    "L": "Licença",
+    "SE": "Serviço externo",
+    "LC": "Licença casamento",
+    "FE": "Folga eleição"
+  }}
+}}
+
+Regras importantes:
+- Matricula deve conter apenas digitos (normalmente 4 a 6).
+- days deve ser objeto com chaves "1".."31" e valor codigo de escala.
+- Nao misture codigos nos campos de nome.
+- Nao inclua markdown, nem explicacoes; somente JSON.
+
+TEXTO EXTRAIDO:
+{extracted_text}
+"""
+
+    response = client.chat.completions.create(
+        model=AI_MODEL,
+        temperature=0,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+    )
+
+    content = response.choices[0].message.content or ""
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError:
+        return json.loads(extract_json_block(content))
+
+
+def extract_json_block(text: str) -> str:
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        raise ValueError("Resposta da IA nao contem JSON valido")
+    return text[start : end + 1]
+
+
+def normalize_ai_payload(payload: dict[str, Any], filename: str, extracted_text: str) -> dict[str, Any]:
+    fallback_meta = parse_metadata(extracted_text, filename)
+    metadata_in = payload.get("metadata") or {}
+
+    month = int(metadata_in.get("month") or fallback_meta["month"])
+    if month < 1 or month > 12:
+        month = fallback_meta["month"]
+
+    year_raw = metadata_in.get("year") or fallback_meta["year"]
+    try:
+        year = int(year_raw)
+    except (TypeError, ValueError):
+        year = fallback_meta["year"]
+
+    month_name = normalize_upper(str(metadata_in.get("month_name") or ""))
+    if month_name not in MONTH_MAP:
+        month_name = fallback_meta["month_name"]
+
+    sectors_out = [{"name": s, "employees": []} for s in SECTOR_CANDIDATES]
+    index_by_sector = {s["name"]: {} for s in sectors_out}
+
+    for sector in payload.get("sectors", []):
+        sector_name = canonicalize_sector_name(str(sector.get("name") or ""))
+        if not sector_name:
+            continue
+
+        for raw_emp in sector.get("employees", []):
+            employee = sanitize_ai_employee(raw_emp)
+            if employee:
+                merge_employee(index_by_sector[sector_name], employee)
+
+    for sector in sectors_out:
+        sector["employees"] = sorted(
+            index_by_sector[sector["name"]].values(), key=lambda x: x["name"].lower()
+        )
+
+    legend = normalize_legend_map(payload.get("legend") or {})
+
+    return {
+        "metadata": {
+            "month": month,
+            "month_name": month_name,
+            "year": year,
+            "source_filename": filename,
+        },
+        "sectors": sectors_out,
+        "legend": legend,
+    }
+
+
+def canonicalize_sector_name(name: str) -> str | None:
+    target = normalize_upper(name)
+    for sector in SECTOR_CANDIDATES:
+        norm = normalize_upper(sector)
+        if norm == target or norm in target or target in norm:
+            return sector
+    return None
+
+
+def sanitize_ai_employee(raw_emp: dict[str, Any]) -> dict[str, Any] | None:
+    matricula = extract_first_matricula(str(raw_emp.get("matricula") or ""))
+    if not matricula:
+        return None
+
+    name = sanitize_person_name(str(raw_emp.get("name") or ""))
+    if not name:
+        return None
+
+    role = sanitize_free_text(str(raw_emp.get("role") or ""))
+    shift_hours = sanitize_free_text(str(raw_emp.get("shift_hours") or ""))
+    days = normalize_days_map(raw_emp.get("days") or {})
+
+    return {
+        "matricula": matricula,
+        "name": name,
+        "role": role,
+        "shift_hours": shift_hours,
+        "days": days,
+    }
+
+
+def normalize_days_map(raw_days: dict[str, Any]) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for key, value in raw_days.items():
+        key_digits = only_digits(str(key))
+        if not key_digits:
+            continue
+        day = int(key_digits)
+        if day < 1 or day > 31:
+            continue
+
+        code = normalize_space(str(value))
+        if not code or not is_line_code_token(code):
+            continue
+
+        out[str(day)] = normalize_line_code(code)
+    return out
+
+
+def normalize_legend_map(raw_legend: dict[str, Any]) -> dict[str, str]:
+    legend = dict(LEGEND_DEFAULT)
+    for code, desc in raw_legend.items():
+        key = normalize_space(str(code)).upper()
+        if not key:
+            continue
+        legend[key] = normalize_space(str(desc))
+    return legend
+
+
+def table_to_lines(table: list[list[str | None]]) -> list[str]:
+    lines: list[str] = []
+    for row in table:
+        cells = [normalize_space(cell or "") for cell in row]
+        if any(cells):
+            lines.append(" | ".join(cells))
+    return lines
 
 
 def extract_pdf_pages(pdf_bytes: bytes) -> list[dict[str, Any]]:
@@ -217,7 +447,6 @@ def parse_employee_line(line: str) -> dict[str, Any] | None:
 
 
 def find_name_code_boundary(tokens: list[str]) -> int | None:
-    # Busca o primeiro ponto em que surge uma janela fortemente composta por codigos de escala.
     for i in range(2, max(3, len(tokens) - 2)):
         window = tokens[i : i + 10]
         if len(window) < 6:
@@ -301,7 +530,6 @@ def parse_sectors(pages: list[dict[str, Any]], full_text: str) -> list[dict[str,
                 if employee:
                     merge_employee(employee_index[current_sector_name], employee)
 
-        # Fallback textual quando o PDF nao traz tabela detectavel.
         for employee in parse_textual_employees(page["text"]):
             merge_employee(employee_index[current_sector_name], employee)
 
@@ -467,7 +695,6 @@ def sanitize_person_name(value: str) -> str:
         return ""
 
     tokens = text.split()
-    # Remove codigos no final, ex: "Mateus ... F F"
     while tokens and looks_like_code_token(tokens[-1]):
         tokens.pop()
 
@@ -501,7 +728,6 @@ def extract_first_matricula(value: str) -> str:
     if not text:
         return ""
 
-    # Prefere blocos reais de matricula (4-6 digitos), evita concatenar diversos codigos.
     matches = re.findall(r"\b\d{4,6}\b", text)
     if matches:
         return matches[0]
