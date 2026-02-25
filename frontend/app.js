@@ -597,13 +597,15 @@ async function showCoworkers({ day, sector, employeeId, scheduleId }) {
   const year = Number(el.profYear.value);
   el.coworkersModalTitle.textContent = `Companheiros em ${day}/${month}/${year} - ${sector}`;
 
-  if (!data?.length) {
-    el.coworkersModalBody.textContent = "Nenhum colega encontrado para esse dia/setor.";
+  const workingCoworkers = (data || []).filter((row) => !NON_WORK_CODES.includes(row.code));
+
+  if (!workingCoworkers.length) {
+    el.coworkersModalBody.textContent = "Nenhum colega trabalhando nesse dia/setor.";
     el.coworkersModal.classList.remove("hidden");
     return;
   }
 
-  el.coworkersModalBody.innerHTML = data
+  el.coworkersModalBody.innerHTML = workingCoworkers
     .map((row) => `<div class="list-row"><span>${escapeHtml(row.employees?.name || "-")} (${escapeHtml(row.employees?.matricula || "-")})</span><span>${escapeHtml(row.code)}</span></div>`)
     .join("");
   el.coworkersModal.classList.remove("hidden");
