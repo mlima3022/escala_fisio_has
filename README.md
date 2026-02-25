@@ -55,6 +55,8 @@ where email = 'SEUEMAIL@gmail.com';
    - Login com Google
    - Aba `Importar`
    - Upload PDF/CSV -> Preview -> Salvar
+   - Para maior confiabilidade, prefira CSV normalizado no formato:
+     `year,month,month_name,sector,matricula,name,role,shift_hours,day,code`
 
 ## 2) Passo a passo no Google Cloud (OAuth)
 
@@ -114,7 +116,7 @@ window.APP_CONFIG = {
   SUPABASE_URL: "https://SEU-PROJETO.supabase.co",
   SUPABASE_ANON_KEY: "SUA_ANON_KEY",
   APP_BASE_URL: "https://SEUUSUARIO.github.io/SEUREPO/frontend/",
-  PARSER_API_URL: "https://SEU-BACKEND.onrender.com/parse-ai"
+  PARSER_API_URL: "https://SEU-BACKEND.onrender.com/parse"
 };
 ```
 
@@ -153,10 +155,6 @@ Opção 1 (manual no dashboard):
 - `Build Command`: `pip install -r requirements.txt`
 - `Start Command`: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 - `Health Check Path`: `/health`
-- Environment Variable obrigatoria para IA:
-  - `OPENAI_API_KEY=...`
-- Environment Variable opcional:
-  - `OPENAI_MODEL=gpt-4.1-mini`
 
 Opção 2 (Blueprint):
 

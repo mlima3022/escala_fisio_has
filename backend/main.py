@@ -1,8 +1,7 @@
 ﻿from __future__ import annotations
 
 import io
-import json
-import os
+import csv
 import re
 import unicodedata
 from typing import Any
@@ -11,7 +10,7 @@ import pdfplumber
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Escala Parser API", version="1.2.0")
+app = FastAPI(title="Escala Parser API", version="1.1.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,7 +57,6 @@ MONTH_MAP = {
 CODE_RE = re.compile(r"^[A-Z*]{1,4}$")
 VALID_CODE_TOKENS = {k.upper() for k in LEGEND_DEFAULT.keys()} | {"F"}
 LINE_CODE_RE = re.compile(r"^(?:\*{3}|FE|LC|SE|L|F|P|T|M|N|[PTMFN][A-Za-z]{2,4})$", re.IGNORECASE)
-AI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 
 @app.get("/health")
@@ -67,7 +65,7 @@ def health() -> dict[str, str]:
 
 
 @app.post("/parse")
-async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
+async def parse_file(file: UploadFile = File(...)) -> dict[str, Any]:
     filename = file.filename or ""
     lower_name = filename.lower()
     if not (lower_name.endswith(".pdf") or lower_name.endswith(".csv")):
@@ -79,6 +77,9 @@ async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
 
     if lower_name.endswith(".csv"):
         full_text = decode_text_bytes(content)
+        normalized = parse_normalized_csv(full_text, filename)
+        if normalized:
+            return normalized
         metadata = parse_metadata(full_text, filename)
         sectors = parse_sectors_from_lines(full_text.splitlines())
     else:
@@ -87,7 +88,7 @@ async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
         metadata = parse_metadata(full_text, filename)
 
         sectors_from_lines = parse_sectors_from_lines(full_text.splitlines())
-        sectors_from_tables = parse_sectors(pages, full_text)
+        sectors_from_tables = parse_sectors_from_tables(pages, full_text)
         sectors = pick_better_sectors(sectors_from_lines, sectors_from_tables)
 
     return {
@@ -97,232 +98,102 @@ async def parse_pdf(file: UploadFile = File(...)) -> dict[str, Any]:
     }
 
 
-@app.post("/parse-ai")
-async def parse_ai(file: UploadFile = File(...)) -> dict[str, Any]:
-    filename = file.filename or ""
-    lower_name = filename.lower()
-    if not (lower_name.endswith(".pdf") or lower_name.endswith(".csv")):
-        raise HTTPException(status_code=400, detail="Arquivo deve ser PDF ou CSV")
+def parse_normalized_csv(text: str, filename: str) -> dict[str, Any] | None:
+    stream = io.StringIO(text)
+    reader = csv.DictReader(stream)
+    headers = set(reader.fieldnames or [])
 
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="OPENAI_API_KEY nao configurada no backend")
+    required = {
+        "year",
+        "month",
+        "month_name",
+        "sector",
+        "matricula",
+        "name",
+        "role",
+        "shift_hours",
+        "day",
+        "code",
+    }
+    if not required.issubset(headers):
+        return None
 
-    raw = await file.read()
-    if not raw:
-        raise HTTPException(status_code=400, detail="Arquivo vazio")
+    sectors = [{"name": name, "employees": []} for name in SECTOR_CANDIDATES]
+    employees_by_sector: dict[str, dict[str, dict[str, Any]]] = {
+        s["name"]: {} for s in sectors
+    }
 
-    if lower_name.endswith(".csv"):
-        extracted_text = decode_text_bytes(raw)
-    else:
-        pages = extract_pdf_pages(raw)
-        chunks: list[str] = []
-        for idx, page in enumerate(pages, start=1):
-            chunks.append(f"[PAGE {idx}]")
-            chunks.append(page.get("text", ""))
-            for t_idx, table in enumerate(page.get("tables", []), start=1):
-                chunks.append(f"[TABLE {idx}.{t_idx}]")
-                chunks.extend(table_to_lines(table))
-        extracted_text = "\n".join(chunks)
+    metadata: dict[str, Any] | None = None
 
-    try:
-        payload = request_ai_payload(api_key, filename, extracted_text)
-        return normalize_ai_payload(payload, filename, extracted_text)
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Falha no parse com IA: {exc}") from exc
+    for row in reader:
+        month = safe_int(row.get("month"))
+        year = safe_int(row.get("year"))
+        day = safe_int(row.get("day"))
+        if month is None or year is None or day is None:
+            continue
+        if month < 1 or month > 12 or day < 1 or day > 31:
+            continue
 
+        month_name_raw = normalize_space(row.get("month_name") or "")
+        month_name = normalize_upper(month_name_raw) or "JANEIRO"
 
-def request_ai_payload(api_key: str, filename: str, extracted_text: str) -> dict[str, Any]:
-    from openai import OpenAI
+        if metadata is None:
+            metadata = {
+                "month": month,
+                "month_name": month_name,
+                "year": year,
+                "source_filename": filename,
+            }
 
-    client = OpenAI(api_key=api_key)
-
-    system_prompt = (
-        "Voce extrai escalas de fisioterapia e retorna SOMENTE JSON valido no formato solicitado. "
-        "Nao invente dados. Se um campo nao existir, retorne string vazia ou objeto vazio. "
-        "Mantenha matricula, nome, role, shift_hours e days por funcionario."
-    )
-
-    user_prompt = f"""
-Converta o texto abaixo para este formato JSON:
-
-{{
-  "metadata": {{
-    "month": 1,
-    "month_name": "JANEIRO",
-    "year": 2026,
-    "source_filename": "{filename}"
-  }},
-  "sectors": [
-    {{ "name": "Supervisão / diarista", "employees": [] }},
-    {{ "name": "Unidades 1, 2 e 5", "employees": [] }},
-    {{ "name": "CTI / UCO (Diurno)", "employees": [] }},
-    {{ "name": "CTI / UCO (Noturno)", "employees": [] }}
-  ],
-  "legend": {{
-    "P": "Plantão",
-    "T": "Tarde",
-    "M": "Manhã",
-    "N": "Noite",
-    "***": "Férias",
-    "L": "Licença",
-    "SE": "Serviço externo",
-    "LC": "Licença casamento",
-    "FE": "Folga eleição"
-  }}
-}}
-
-Regras importantes:
-- Matricula deve conter apenas digitos (normalmente 4 a 6).
-- days deve ser objeto com chaves "1".."31" e valor codigo de escala.
-- Nao misture codigos nos campos de nome.
-- Nao inclua markdown, nem explicacoes; somente JSON.
-
-TEXTO EXTRAIDO:
-{extracted_text}
-"""
-
-    response = client.chat.completions.create(
-        model=AI_MODEL,
-        temperature=0,
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    )
-
-    content = response.choices[0].message.content or ""
-    try:
-        return json.loads(content)
-    except json.JSONDecodeError:
-        return json.loads(extract_json_block(content))
-
-
-def extract_json_block(text: str) -> str:
-    start = text.find("{")
-    end = text.rfind("}")
-    if start == -1 or end == -1 or end <= start:
-        raise ValueError("Resposta da IA nao contem JSON valido")
-    return text[start : end + 1]
-
-
-def normalize_ai_payload(payload: dict[str, Any], filename: str, extracted_text: str) -> dict[str, Any]:
-    fallback_meta = parse_metadata(extracted_text, filename)
-    metadata_in = payload.get("metadata") or {}
-
-    month = int(metadata_in.get("month") or fallback_meta["month"])
-    if month < 1 or month > 12:
-        month = fallback_meta["month"]
-
-    year_raw = metadata_in.get("year") or fallback_meta["year"]
-    try:
-        year = int(year_raw)
-    except (TypeError, ValueError):
-        year = fallback_meta["year"]
-
-    month_name = normalize_upper(str(metadata_in.get("month_name") or ""))
-    if month_name not in MONTH_MAP:
-        month_name = fallback_meta["month_name"]
-
-    sectors_out = [{"name": s, "employees": []} for s in SECTOR_CANDIDATES]
-    index_by_sector = {s["name"]: {} for s in sectors_out}
-
-    for sector in payload.get("sectors", []):
-        sector_name = canonicalize_sector_name(str(sector.get("name") or ""))
+        sector_name = canonicalize_sector_name_csv(row.get("sector") or "")
         if not sector_name:
             continue
 
-        for raw_emp in sector.get("employees", []):
-            employee = sanitize_ai_employee(raw_emp)
-            if employee:
-                merge_employee(index_by_sector[sector_name], employee)
+        matricula = extract_first_matricula(row.get("matricula") or "")
+        name = sanitize_person_name(row.get("name") or "")
+        if not matricula or not name:
+            continue
 
-    for sector in sectors_out:
-        sector["employees"] = sorted(
-            index_by_sector[sector["name"]].values(), key=lambda x: x["name"].lower()
-        )
+        role = sanitize_free_text(row.get("role") or "")
+        shift_hours = sanitize_free_text(row.get("shift_hours") or "")
 
-    legend = normalize_legend_map(payload.get("legend") or {})
+        code_raw = normalize_space(row.get("code") or "")
+        if not code_raw:
+            continue
+        code = normalize_line_code(code_raw)
 
-    return {
-        "metadata": {
-            "month": month,
-            "month_name": month_name,
-            "year": year,
-            "source_filename": filename,
-        },
-        "sectors": sectors_out,
-        "legend": legend,
-    }
+        key = f"{matricula}::{name}"
+        employee = employees_by_sector[sector_name].get(key)
+        if not employee:
+            employee = {
+                "matricula": matricula,
+                "name": name,
+                "role": role,
+                "shift_hours": shift_hours,
+                "days": {},
+            }
+            employees_by_sector[sector_name][key] = employee
 
+        if not employee["role"] and role:
+            employee["role"] = role
+        if not employee["shift_hours"] and shift_hours:
+            employee["shift_hours"] = shift_hours
 
-def canonicalize_sector_name(name: str) -> str | None:
-    target = normalize_upper(name)
-    for sector in SECTOR_CANDIDATES:
-        norm = normalize_upper(sector)
-        if norm == target or norm in target or target in norm:
-            return sector
-    return None
+        employee["days"][str(day)] = code
 
-
-def sanitize_ai_employee(raw_emp: dict[str, Any]) -> dict[str, Any] | None:
-    matricula = extract_first_matricula(str(raw_emp.get("matricula") or ""))
-    if not matricula:
+    if metadata is None:
         return None
 
-    name = sanitize_person_name(str(raw_emp.get("name") or ""))
-    if not name:
-        return None
-
-    role = sanitize_free_text(str(raw_emp.get("role") or ""))
-    shift_hours = sanitize_free_text(str(raw_emp.get("shift_hours") or ""))
-    days = normalize_days_map(raw_emp.get("days") or {})
+    for sector in sectors:
+        employees = list(employees_by_sector[sector["name"]].values())
+        employees.sort(key=lambda x: x["name"].lower())
+        sector["employees"] = employees
 
     return {
-        "matricula": matricula,
-        "name": name,
-        "role": role,
-        "shift_hours": shift_hours,
-        "days": days,
+        "metadata": metadata,
+        "sectors": sectors,
+        "legend": LEGEND_DEFAULT,
     }
-
-
-def normalize_days_map(raw_days: dict[str, Any]) -> dict[str, str]:
-    out: dict[str, str] = {}
-    for key, value in raw_days.items():
-        key_digits = only_digits(str(key))
-        if not key_digits:
-            continue
-        day = int(key_digits)
-        if day < 1 or day > 31:
-            continue
-
-        code = normalize_space(str(value))
-        if not code or not is_line_code_token(code):
-            continue
-
-        out[str(day)] = normalize_line_code(code)
-    return out
-
-
-def normalize_legend_map(raw_legend: dict[str, Any]) -> dict[str, str]:
-    legend = dict(LEGEND_DEFAULT)
-    for code, desc in raw_legend.items():
-        key = normalize_space(str(code)).upper()
-        if not key:
-            continue
-        legend[key] = normalize_space(str(desc))
-    return legend
-
-
-def table_to_lines(table: list[list[str | None]]) -> list[str]:
-    lines: list[str] = []
-    for row in table:
-        cells = [normalize_space(cell or "") for cell in row]
-        if any(cells):
-            lines.append(" | ".join(cells))
-    return lines
 
 
 def extract_pdf_pages(pdf_bytes: bytes) -> list[dict[str, Any]]:
@@ -434,7 +305,6 @@ def parse_employee_line(line: str) -> dict[str, Any] | None:
 
     tail = tokens[i:]
     role, shift_hours = split_role_and_shift(tail)
-
     days = {str(day + 1): code for day, code in enumerate(day_tokens)}
 
     return {
@@ -446,64 +316,7 @@ def parse_employee_line(line: str) -> dict[str, Any] | None:
     }
 
 
-def find_name_code_boundary(tokens: list[str]) -> int | None:
-    for i in range(2, max(3, len(tokens) - 2)):
-        window = tokens[i : i + 10]
-        if len(window) < 6:
-            continue
-        code_count = sum(1 for t in window if is_line_code_token(t))
-        if code_count >= 6:
-            return i
-    return None
-
-
-def is_line_code_token(token: str) -> bool:
-    return bool(LINE_CODE_RE.fullmatch(token.strip()))
-
-
-def normalize_line_code(token: str) -> str:
-    cleaned = normalize_space(token)
-    if cleaned == "***":
-        return "***"
-    return cleaned[:1].upper() + cleaned[1:]
-
-
-def split_role_and_shift(tokens: list[str]) -> tuple[str, str]:
-    if not tokens:
-        return "", ""
-
-    shift_start = None
-    for idx, tok in enumerate(tokens):
-        upper = normalize_upper(tok)
-        if ":" in tok or "H" in upper or "AS" == upper or "A" == upper:
-            shift_start = idx
-            break
-
-    if shift_start is None:
-        return sanitize_free_text(" ".join(tokens)), ""
-
-    role = sanitize_free_text(" ".join(tokens[:shift_start]))
-    shift = sanitize_free_text(" ".join(tokens[shift_start:]))
-    return role, shift
-
-
-def strip_csv_quotes(line: str) -> str:
-    value = line.strip()
-    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
-        return value[1:-1]
-    return value
-
-
-def decode_text_bytes(raw: bytes) -> str:
-    for enc in ("utf-8-sig", "utf-8", "latin-1"):
-        try:
-            return raw.decode(enc)
-        except UnicodeDecodeError:
-            continue
-    return raw.decode("utf-8", errors="ignore")
-
-
-def parse_sectors(pages: list[dict[str, Any]], full_text: str) -> list[dict[str, Any]]:
+def parse_sectors_from_tables(pages: list[dict[str, Any]], full_text: str) -> list[dict[str, Any]]:
     sectors = [{"name": name, "employees": []} for name in SECTOR_CANDIDATES]
     employee_index = {s["name"]: {} for s in sectors}
 
@@ -666,6 +479,47 @@ def normalize_code(value: str) -> str:
     return ""
 
 
+def find_name_code_boundary(tokens: list[str]) -> int | None:
+    for i in range(2, max(3, len(tokens) - 2)):
+        window = tokens[i : i + 10]
+        if len(window) < 6:
+            continue
+        code_count = sum(1 for t in window if is_line_code_token(t))
+        if code_count >= 6:
+            return i
+    return None
+
+
+def is_line_code_token(token: str) -> bool:
+    return bool(LINE_CODE_RE.fullmatch(token.strip()))
+
+
+def normalize_line_code(token: str) -> str:
+    cleaned = normalize_space(token)
+    if cleaned == "***":
+        return "***"
+    return cleaned[:1].upper() + cleaned[1:]
+
+
+def split_role_and_shift(tokens: list[str]) -> tuple[str, str]:
+    if not tokens:
+        return "", ""
+
+    shift_start = None
+    for idx, tok in enumerate(tokens):
+        upper = normalize_upper(tok)
+        if ":" in tok or "H" in upper or "AS" == upper or "A" == upper:
+            shift_start = idx
+            break
+
+    if shift_start is None:
+        return sanitize_free_text(" ".join(tokens)), ""
+
+    role = sanitize_free_text(" ".join(tokens[:shift_start]))
+    shift = sanitize_free_text(" ".join(tokens[shift_start:]))
+    return role, shift
+
+
 def is_probable_name(value: str) -> bool:
     text = normalize_space(value)
     if len(text) < 6:
@@ -736,6 +590,38 @@ def extract_first_matricula(value: str) -> str:
     if 4 <= len(digits) <= 6:
         return digits
     return ""
+
+
+def strip_csv_quotes(line: str) -> str:
+    value = line.strip()
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return value[1:-1]
+    return value
+
+
+def decode_text_bytes(raw: bytes) -> str:
+    for enc in ("utf-8-sig", "utf-8", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="ignore")
+
+
+def safe_int(value: Any) -> int | None:
+    try:
+        return int(str(value).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def canonicalize_sector_name_csv(name: str) -> str | None:
+    normalized = normalize_upper(name)
+    for sector in SECTOR_CANDIDATES:
+        sector_norm = normalize_upper(sector)
+        if normalized == sector_norm or normalized in sector_norm or sector_norm in normalized:
+            return sector
+    return None
 
 
 def normalize_space(value: str) -> str:

@@ -462,7 +462,8 @@ async function handleParsePdf() {
     return;
   }
 
-  if (!parserApiUrl) {
+  const parserUrl = getEffectiveParserUrl();
+  if (!parserUrl) {
     el.importStatus.textContent = "PARSER_API_URL não configurado em config.js.";
     return;
   }
@@ -473,7 +474,7 @@ async function handleParsePdf() {
   body.append("file", file);
 
   try {
-    const response = await fetch(parserApiUrl, { method: "POST", body });
+    const response = await fetch(parserUrl, { method: "POST", body });
     if (!response.ok) {
       const message = await response.text();
       throw new Error(message || "Falha no parser.");
@@ -492,6 +493,13 @@ async function handleParsePdf() {
     el.saveBtn.disabled = true;
     el.importStatus.textContent = `Erro no parse: ${error.message}`;
   }
+}
+
+function getEffectiveParserUrl() {
+  const raw = (parserApiUrl || "").trim();
+  if (!raw) return "";
+  // Fallback defensivo para ambientes com cache antigo apontando para /parse-ai.
+  return raw.replace(/\/parse-ai\/?$/i, "/parse");
 }
 
 function validateParsedPayload(payload) {
