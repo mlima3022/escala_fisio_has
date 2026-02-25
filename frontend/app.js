@@ -658,6 +658,15 @@ async function persistParsedData(payload, { overwrite, existingSchedule }) {
         ? `Escala sobrescrita com sucesso. ${savedCount} lançamento(s) gravado(s).`
         : `Escala salva com sucesso. ${savedCount} lançamento(s) gravado(s).`
     );
+
+    // Após salvar, sincroniza os filtros para o mês/ano importado.
+    const importedMonth = String(metadata.month);
+    const importedYear = String(metadata.year);
+    el.calendarMonth.value = importedMonth;
+    el.calendarYear.value = importedYear;
+    el.profMonth.value = importedMonth;
+    el.profYear.value = importedYear;
+
     await loadEmployees();
     await refreshCalendarData();
     await renderProfessional();
