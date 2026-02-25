@@ -424,9 +424,11 @@ function renderCalendar() {
     const workingRowsForDay = rowsForDay.filter((row) => !NON_WORK_CODES.includes(row.code));
     const count = workingRowsForDay.length;
     const todayClass = isCurrentMonth && day === today.getDate() ? "today" : "";
+    const weekday = getWeekdayLabel(day, month, year);
     cells.push(`
       <div class="day-cell ${todayClass}">
         <div><strong>${day}</strong></div>
+        <div class="weekday-text">${weekday}</div>
         <div class="count"><span class="count-number">${count}</span> <span class="count-label">esc.</span></div>
         ${count > 0 ? `<button class="open-day" data-day="${day}">Detalhes</button>` : ""}
       </div>
@@ -606,10 +608,11 @@ async function renderProfessional() {
       const status = isOff ? "FOLGA" : "TRABALHA";
       const emoji = isOff ? "😴" : "💪";
       const itemClass = isOff ? "workday-item off workday-off" : "workday-item";
+      const weekday = getWeekdayLabel(r.day, month, year);
       return `
         <div class="${itemClass}">
           <div class="workday-head">
-            <span class="workday-date">${emoji} ${r.day}/${month}/${year}</span>
+            <span class="workday-date">${emoji} ${weekday} • ${r.day}/${month}/${year}</span>
             <span class="workday-badge">${status}</span>
           </div>
           ${isOff ? "" : `<div class="workday-meta">${escapeHtml(r.sector)} • Código: <strong>${escapeHtml(r.code)}</strong></div>
@@ -663,9 +666,11 @@ function renderEmployeeCalendar(rows, month, year) {
     const code = row?.code || "-";
     const status = row ? (NON_WORK_CODES.includes(row.code) ? "Folga" : "Trabalho") : "Sem registro";
     const todayClass = isCurrentMonth && day === today.getDate() ? "today" : "";
+    const weekday = getWeekdayLabel(day, month, year);
     cells.push(`
       <div class="day-cell ${todayClass}">
         <div><strong>${day}</strong></div>
+        <div class="weekday-text">${weekday}</div>
         <div class="count">${escapeHtml(code)} | ${escapeHtml(status)}</div>
       </div>
     `);
@@ -917,6 +922,11 @@ function getEffectiveShiftHours(code, fallbackShiftHours) {
   const normalized = String(code || "").trim().toUpperCase();
   if (normalized === "M") return "07:00 às 13:00";
   return fallbackShiftHours || "";
+}
+
+function getWeekdayLabel(day, month, year) {
+  const labels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+  return labels[new Date(year, month - 1, day).getDay()];
 }
 
 function getOAuthRedirectUrl() {

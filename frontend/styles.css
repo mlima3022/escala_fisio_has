@@ -319,6 +319,10 @@ main {
   color: rgba(255, 255, 255, 0.92);
 }
 
+.day-cell.today .weekday-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .day-cell.today .open-day {
   background: rgba(255, 255, 255, 0.16);
   border-color: rgba(255, 255, 255, 0.34);
@@ -335,6 +339,13 @@ main {
   font-size: 0.82rem;
   color: var(--muted);
   line-height: 1.1;
+}
+
+.day-cell .weekday-text {
+  margin-top: 2px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #5d7191;
 }
 
 .day-cell .open-day {
