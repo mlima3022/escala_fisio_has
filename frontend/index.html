@@ -1,0 +1,134 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Escala Fisioterapia</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.js"></script>
+  <script src="./config.example.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Escala de Fisioterapia</h1>
+      <p class="muted">Visualização pública com importação restrita ao administrador.</p>
+    </div>
+    <div class="auth-actions">
+      <button id="loginBtn">Entrar com Google (Admin)</button>
+      <button id="logoutBtn" class="hidden">Sair</button>
+    </div>
+  </header>
+
+  <section id="authInfo" class="card"></section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="calendar">Calendário</button>
+    <button class="tab" data-tab="professional">Profissional</button>
+    <button class="tab hidden" id="importTabBtn" data-tab="import">Importar</button>
+  </nav>
+
+  <main>
+    <section id="calendarTab" class="tab-content active">
+      <div class="filters card">
+        <div>
+          <label for="calendarMonth">Mês</label>
+          <select id="calendarMonth"></select>
+        </div>
+        <div>
+          <label for="calendarYear">Ano</label>
+          <select id="calendarYear"></select>
+        </div>
+        <div>
+          <label for="calendarSector">Setor</label>
+          <select id="calendarSector"></select>
+        </div>
+        <div>
+          <label for="calendarCode">Código</label>
+          <select id="calendarCode"></select>
+        </div>
+      </div>
+      <section class="card">
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+    </section>
+
+    <section id="professionalTab" class="tab-content">
+      <div class="filters card">
+        <div>
+          <label for="profMonth">Mês</label>
+          <select id="profMonth"></select>
+        </div>
+        <div>
+          <label for="profYear">Ano</label>
+          <select id="profYear"></select>
+        </div>
+        <div class="wide">
+          <label for="employeeSearch">Profissional (nome ou matrícula)</label>
+          <input id="employeeSearch" list="employeeList" placeholder="Digite para buscar" />
+          <datalist id="employeeList"></datalist>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <section class="card">
+          <h3>Resumo do mês</h3>
+          <div id="profSummary"></div>
+          <p id="nextWorkday" class="highlight"></p>
+        </section>
+        <section class="card">
+          <h3>Escala do mês</h3>
+          <div id="profAssignments"></div>
+        </section>
+      </div>
+
+      <section class="card">
+        <h3>Com quem trabalha no dia selecionado</h3>
+        <div id="coworkersPanel">Selecione um dia na lista acima.</div>
+      </section>
+    </section>
+
+    <section id="importTab" class="tab-content">
+      <section class="card">
+        <h3>Importação de PDF</h3>
+        <p>Somente administrador pode importar/sobrescrever escalas.</p>
+        <div class="import-row">
+          <input type="file" id="pdfInput" accept="application/pdf" />
+          <button id="parseBtn">Processar PDF</button>
+          <button id="saveBtn" disabled>Salvar no banco</button>
+        </div>
+        <p id="importStatus" class="muted"></p>
+      </section>
+
+      <section class="card">
+        <h3>Preview do parse</h3>
+        <pre id="previewBox">Nenhum dado processado.</pre>
+      </section>
+    </section>
+  </main>
+
+  <div id="dayModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="dayModalTitle">Detalhes do dia</h3>
+        <button id="closeDayModal">Fechar</button>
+      </div>
+      <div id="dayModalBody"></div>
+    </div>
+  </div>
+
+  <div id="overwriteModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Escala já existe</h3>
+      <p>Já existe uma escala para este mês/ano. Deseja sobrescrever?</p>
+      <div class="import-row">
+        <button id="confirmOverwrite">Sobrescrever</button>
+        <button id="cancelOverwrite">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

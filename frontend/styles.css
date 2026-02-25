@@ -1,0 +1,218 @@
+﻿:root {
+  --bg: #f3f5f7;
+  --card: #ffffff;
+  --text: #17212b;
+  --muted: #5d6a75;
+  --accent: #0a6e4f;
+  --accent-2: #0d8d65;
+  --danger: #af2f2f;
+  --border: #d7dde3;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  background: linear-gradient(180deg, #eef2f5 0%, #f8fafc 100%);
+  color: var(--text);
+}
+
+main {
+  width: min(1100px, 96%);
+  margin: 0 auto 40px;
+}
+
+.topbar, .tabs {
+  width: min(1100px, 96%);
+  margin: 16px auto;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+a, button {
+  cursor: pointer;
+}
+
+button {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: var(--card);
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+#loginBtn, #confirmOverwrite, #saveBtn, #parseBtn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+#loginBtn:hover, #confirmOverwrite:hover, #saveBtn:hover, #parseBtn:hover {
+  background: var(--accent-2);
+}
+
+#cancelOverwrite {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.hidden { display: none !important; }
+.muted { color: var(--muted); }
+.highlight { font-weight: 700; color: var(--accent); }
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.filters .wide {
+  grid-column: span 2;
+}
+
+label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+select, input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+}
+
+.day-cell {
+  min-height: 90px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fff;
+}
+
+.day-cell.disabled {
+  background: #f5f7f9;
+  color: #8a959f;
+}
+
+.day-cell .count {
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.day-cell .open-day {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 6px 0;
+}
+
+.import-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  background: #0f1720;
+  color: #d5dce3;
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+}
+
+.modal-content {
+  width: min(860px, 96%);
+  background: white;
+  border-radius: 12px;
+  padding: 14px;
+  max-height: 84vh;
+  overflow: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+@media (max-width: 860px) {
+  .filters {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .filters .wide {
+    grid-column: span 2;
+  }
+
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
