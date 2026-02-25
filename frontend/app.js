@@ -1,6 +1,10 @@
 ﻿import { supabase, parserApiUrl } from "./supabaseClient.js";
 
 const NON_WORK_CODES = ["F", "***", "L", "FE", "LC", "SE"];
+const MONTH_NAMES = [
+  "JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO",
+  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+];
 
 const state = {
   session: null,
@@ -9,7 +13,6 @@ const state = {
   currentAssignments: [],
   parsedPayload: null,
   employees: [],
-  selectedEmployeeId: null,
   overwriteContext: null
 };
 
@@ -17,30 +20,52 @@ const el = {
   loginBtn: document.getElementById("loginBtn"),
   logoutBtn: document.getElementById("logoutBtn"),
   authInfo: document.getElementById("authInfo"),
-  tabs: [...document.querySelectorAll(".tab")],
+  tabs: [...document.querySelectorAll(".main-tabs .tab")],
   tabContents: {
     calendar: document.getElementById("calendarTab"),
     professional: document.getElementById("professionalTab"),
     import: document.getElementById("importTab")
   },
   importTabBtn: document.getElementById("importTabBtn"),
+
   calendarMonth: document.getElementById("calendarMonth"),
   calendarYear: document.getElementById("calendarYear"),
   calendarSector: document.getElementById("calendarSector"),
   calendarCode: document.getElementById("calendarCode"),
   calendarGrid: document.getElementById("calendarGrid"),
+
+  profMonth: document.getElementById("profMonth"),
+  profYear: document.getElementById("profYear"),
+  profMonthLabel: document.getElementById("profMonthLabel"),
+  prevProfMonth: document.getElementById("prevProfMonth"),
+  nextProfMonth: document.getElementById("nextProfMonth"),
+  employeeSelect: document.getElementById("employeeSelect"),
+  selectedEmployeeTitle: document.getElementById("selectedEmployeeTitle"),
+  selectedEmployeeSubtitle: document.getElementById("selectedEmployeeSubtitle"),
+  employeeCalendarTitle: document.getElementById("employeeCalendarTitle"),
+
+  profTabs: [...document.querySelectorAll(".prof-tab")],
+  mobileProfTabs: [...document.querySelectorAll(".mnav-btn")],
+  profContents: {
+    calendar: document.getElementById("profCalendarContent"),
+    workdays: document.getElementById("profWorkdaysContent"),
+    coworkers: document.getElementById("profCoworkersContent"),
+    info: document.getElementById("profInfoContent")
+  },
+
+  profSummary: document.getElementById("profSummary"),
+  nextWorkday: document.getElementById("nextWorkday"),
+  profAssignments: document.getElementById("profAssignments"),
+  coworkersPanel: document.getElementById("coworkersPanel"),
+  employeeInfoPanel: document.getElementById("employeeInfoPanel"),
+  codeStatsPanel: document.getElementById("codeStatsPanel"),
+  employeeCalendarGrid: document.getElementById("employeeCalendarGrid"),
+
   dayModal: document.getElementById("dayModal"),
   dayModalTitle: document.getElementById("dayModalTitle"),
   dayModalBody: document.getElementById("dayModalBody"),
   closeDayModal: document.getElementById("closeDayModal"),
-  profMonth: document.getElementById("profMonth"),
-  profYear: document.getElementById("profYear"),
-  employeeSearch: document.getElementById("employeeSearch"),
-  employeeList: document.getElementById("employeeList"),
-  profSummary: document.getElementById("profSummary"),
-  profAssignments: document.getElementById("profAssignments"),
-  coworkersPanel: document.getElementById("coworkersPanel"),
-  nextWorkday: document.getElementById("nextWorkday"),
+
   pdfInput: document.getElementById("pdfInput"),
   parseBtn: document.getElementById("parseBtn"),
   saveBtn: document.getElementById("saveBtn"),
@@ -53,7 +78,7 @@ const el = {
 
 init().catch((err) => {
   console.error(err);
-  setAuthInfo("Erro ao iniciar aplicação. Verifique o console e o config.js.");
+  setAuthInfo("Erro ao iniciar aplicação. Verifique o config.js e recarregue a página.");
 });
 
 async function init() {
@@ -68,10 +93,9 @@ async function init() {
 
 function bindEvents() {
   el.loginBtn.addEventListener("click", async () => {
-    const redirectTo = getOAuthRedirectUrl();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo }
+      options: { redirectTo: getOAuthRedirectUrl() }
     });
   });
 
@@ -87,29 +111,53 @@ function bindEvents() {
     tabBtn.addEventListener("click", () => setActiveTab(tabBtn.dataset.tab));
   });
 
+  el.profTabs.forEach((tabBtn) => {
+    tabBtn.addEventListener("click", () => setActiveProfTab(tabBtn.dataset.proftab));
+  });
+  el.mobileProfTabs.forEach((tabBtn) => {
+    tabBtn.addEventListener("click", () => setActiveProfTab(tabBtn.dataset.proftab));
+  });
+
   [el.calendarMonth, el.calendarYear].forEach((node) => {
     node.addEventListener("change", async () => {
+      await refreshCalendarData();
+      syncProfessionalMonthFromCalendar();
+      await renderProfessional();
+    });
+  });
+
+  [el.calendarSector, el.calendarCode].forEach((node) => node.addEventListener("change", renderCalendar));
+
+  [el.profMonth, el.profYear].forEach((node) => {
+    node.addEventListener("change", async () => {
+      syncCalendarMonthFromProfessional();
       await refreshCalendarData();
       await renderProfessional();
     });
   });
 
-  [el.calendarSector, el.calendarCode].forEach((node) => {
-    node.addEventListener("change", renderCalendar);
+  el.employeeSelect.addEventListener("change", renderProfessional);
+
+  el.prevProfMonth.addEventListener("click", async () => {
+    shiftProfessionalMonth(-1);
+    syncCalendarMonthFromProfessional();
+    await refreshCalendarData();
+    await renderProfessional();
   });
 
-  [el.profMonth, el.profYear].forEach((node) => {
-    node.addEventListener("change", renderProfessional);
+  el.nextProfMonth.addEventListener("click", async () => {
+    shiftProfessionalMonth(1);
+    syncCalendarMonthFromProfessional();
+    await refreshCalendarData();
+    await renderProfessional();
   });
-
-  el.employeeSearch.addEventListener("change", renderProfessional);
 
   el.closeDayModal.addEventListener("click", () => el.dayModal.classList.add("hidden"));
   el.dayModal.addEventListener("click", (ev) => {
     if (ev.target === el.dayModal) el.dayModal.classList.add("hidden");
   });
 
-  el.parseBtn.addEventListener("click", handleParsePdf);
+  el.parseBtn.addEventListener("click", handleParseFile);
   el.saveBtn.addEventListener("click", handleSaveParsedData);
   el.confirmOverwrite.addEventListener("click", async () => {
     el.overwriteModal.classList.add("hidden");
@@ -135,6 +183,8 @@ function setupDateSelects() {
 
   el.calendarSector.innerHTML = '<option value="ALL">Todos os setores</option>';
   el.calendarCode.innerHTML = '<option value="ALL">Todos os códigos</option>';
+
+  updateProfessionalMonthLabel();
 }
 
 function populateSelect(select, options, selectedValue) {
@@ -145,6 +195,33 @@ function populateSelect(select, options, selectedValue) {
 
 function range(start, end) {
   return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
+
+function shiftProfessionalMonth(offset) {
+  const month = Number(el.profMonth.value);
+  const year = Number(el.profYear.value);
+  const d = new Date(year, month - 1 + offset, 1);
+  el.profMonth.value = String(d.getMonth() + 1);
+  el.profYear.value = String(d.getFullYear());
+  updateProfessionalMonthLabel();
+}
+
+function updateProfessionalMonthLabel() {
+  const month = Number(el.profMonth.value || 1);
+  const year = Number(el.profYear.value || new Date().getFullYear());
+  el.profMonthLabel.textContent = `${MONTH_NAMES[month - 1]} ${year}`;
+}
+
+function syncProfessionalMonthFromCalendar() {
+  el.profMonth.value = el.calendarMonth.value;
+  el.profYear.value = el.calendarYear.value;
+  updateProfessionalMonthLabel();
+}
+
+function syncCalendarMonthFromProfessional() {
+  el.calendarMonth.value = el.profMonth.value;
+  el.calendarYear.value = el.profYear.value;
+  updateProfessionalMonthLabel();
 }
 
 async function loadSession() {
@@ -183,7 +260,7 @@ function updateAuthUi() {
     setAuthInfo(`Logado como ${state.profile?.email}. Você não é admin.`);
   }
 
-  if (!isAdmin && getActiveTab() === "import") setActiveTab("calendar");
+  if (!isAdmin && getActiveTab() === "import") setActiveTab("professional");
 }
 
 function setAuthInfo(msg) {
@@ -199,7 +276,15 @@ function setActiveTab(tabName) {
 
 function getActiveTab() {
   const current = el.tabs.find((tab) => tab.classList.contains("active"));
-  return current?.dataset.tab || "calendar";
+  return current?.dataset.tab || "professional";
+}
+
+function setActiveProfTab(tabName) {
+  el.profTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.proftab === tabName));
+  el.mobileProfTabs.forEach((tab) => tab.classList.toggle("active", tab.dataset.proftab === tabName));
+  Object.entries(el.profContents).forEach(([name, node]) => {
+    node.classList.toggle("active", name === tabName);
+  });
 }
 
 async function refreshCalendarData() {
@@ -306,7 +391,7 @@ function showDayDetails(day, rows) {
     return;
   }
 
-  const html = Object.entries(grouped)
+  el.dayModalBody.innerHTML = Object.entries(grouped)
     .map(([sector, values]) => {
       const people = values
         .map((row) => {
@@ -319,7 +404,6 @@ function showDayDetails(day, rows) {
     })
     .join("");
 
-  el.dayModalBody.innerHTML = html;
   el.dayModal.classList.remove("hidden");
 }
 
@@ -332,33 +416,49 @@ async function loadEmployees() {
   if (error) throw error;
 
   state.employees = data || [];
-  el.employeeList.innerHTML = state.employees
-    .map((emp) => `<option value="${escapeHtml(emp.matricula)} - ${escapeHtml(emp.name)}"></option>`)
-    .join("");
+
+  const current = el.employeeSelect.value;
+  el.employeeSelect.innerHTML = [
+    '<option value="">Selecione um profissional...</option>',
+    ...state.employees.map((emp) => `<option value="${emp.id}">${escapeHtml(emp.name)} (${escapeHtml(emp.matricula)})</option>`)
+  ].join("");
+
+  if (current && state.employees.some((e) => e.id === current)) {
+    el.employeeSelect.value = current;
+  }
 }
 
 function findSelectedEmployee() {
-  const raw = el.employeeSearch.value.trim();
-  if (!raw) return null;
-
-  const firstPart = raw.split("-")[0].trim();
-  const byMatricula = state.employees.find((e) => e.matricula === firstPart);
-  if (byMatricula) return byMatricula;
-
-  return state.employees.find((e) => `${e.matricula} - ${e.name}`.toLowerCase() === raw.toLowerCase()) || null;
+  const id = el.employeeSelect.value;
+  if (!id) return null;
+  return state.employees.find((e) => e.id === id) || null;
 }
 
 async function renderProfessional() {
+  updateProfessionalMonthLabel();
+
   const month = Number(el.profMonth.value);
   const year = Number(el.profYear.value);
   const employee = findSelectedEmployee();
 
   el.profSummary.innerHTML = "Selecione um profissional.";
   el.profAssignments.innerHTML = "";
-  el.coworkersPanel.textContent = "Selecione um dia na lista acima.";
+  el.coworkersPanel.textContent = "Selecione um dia na aba \"Dias de Trabalho\".";
   el.nextWorkday.textContent = "";
+  el.employeeInfoPanel.textContent = "Selecione um profissional.";
+  el.codeStatsPanel.textContent = "";
+  el.employeeCalendarGrid.innerHTML = "";
 
-  if (!employee) return;
+  if (!employee) {
+    el.selectedEmployeeTitle.textContent = "Escala de Fisioterapia";
+    el.selectedEmployeeSubtitle.textContent = "Selecione um profissional para ver os detalhes.";
+    el.employeeCalendarTitle.textContent = "Calendário do Profissional";
+    return;
+  }
+
+  el.selectedEmployeeTitle.textContent = employee.name;
+  el.selectedEmployeeSubtitle.textContent = `Escala de Trabalho - ${MONTH_NAMES[month - 1]} ${year}`;
+  el.employeeCalendarTitle.textContent = `Calendário de ${MONTH_NAMES[month - 1]} ${year}`;
 
   const { data: schedule } = await supabase
     .from("schedules")
@@ -391,10 +491,14 @@ async function renderProfessional() {
     return acc;
   }, {});
 
-  el.profSummary.innerHTML = Object.entries(countByCode)
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([code, count]) => `<div class="list-row"><span>${escapeHtml(code)}</span><strong>${count}</strong></div>`)
-    .join("");
+  const workDays = rows.filter((r) => !NON_WORK_CODES.includes(r.code)).length;
+  const offDays = rows.length - workDays;
+
+  el.profSummary.innerHTML = [
+    `<div class="list-row"><span>Dias de trabalho</span><strong>${workDays}</strong></div>`,
+    `<div class="list-row"><span>Dias de folga</span><strong>${offDays}</strong></div>`,
+    `<div class="list-row"><span>Total de registros</span><strong>${rows.length}</strong></div>`
+  ].join("");
 
   const today = new Date();
   const currentDay = (today.getFullYear() === year && today.getMonth() + 1 === month) ? today.getDate() : 1;
@@ -425,8 +529,46 @@ async function renderProfessional() {
         employeeId: btn.dataset.employee,
         scheduleId: btn.dataset.schedule
       });
+      setActiveProfTab("coworkers");
     });
   });
+
+  el.employeeInfoPanel.innerHTML = [
+    `<div class="list-row"><span>Nome</span><strong>${escapeHtml(employee.name)}</strong></div>`,
+    `<div class="list-row"><span>Matrícula</span><strong>${escapeHtml(employee.matricula)}</strong></div>`,
+    `<div class="list-row"><span>Função</span><strong>${escapeHtml(rows[0]?.role || "-")}</strong></div>`,
+    `<div class="list-row"><span>Horário</span><strong>${escapeHtml(rows[0]?.shift_hours || "-")}</strong></div>`
+  ].join("");
+
+  el.codeStatsPanel.innerHTML = Object.entries(countByCode)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([code, count]) => `<div class="list-row"><span>${escapeHtml(code)}</span><strong>${count}</strong></div>`)
+    .join("");
+
+  renderEmployeeCalendar(rows, month, year);
+}
+
+function renderEmployeeCalendar(rows, month, year) {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const firstWeekday = new Date(year, month - 1, 1).getDay();
+
+  const byDay = new Map(rows.map((r) => [r.day, r]));
+  const cells = [];
+  for (let i = 0; i < firstWeekday; i += 1) cells.push('<div class="day-cell disabled"></div>');
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const row = byDay.get(day);
+    const code = row?.code || "-";
+    const status = row ? (NON_WORK_CODES.includes(row.code) ? "Folga" : "Trabalho") : "Sem registro";
+    cells.push(`
+      <div class="day-cell">
+        <div><strong>${day}</strong></div>
+        <div class="count">${escapeHtml(code)} | ${escapeHtml(status)}</div>
+      </div>
+    `);
+  }
+
+  el.employeeCalendarGrid.innerHTML = cells.join("");
 }
 
 async function showCoworkers({ day, sector, employeeId, scheduleId }) {
@@ -450,23 +592,14 @@ async function showCoworkers({ day, sector, employeeId, scheduleId }) {
     .join("");
 }
 
-async function handleParsePdf() {
-  if (!state.profile?.is_admin) {
-    setImportStatus("Apenas admin pode importar.", true);
-    return;
-  }
+async function handleParseFile() {
+  if (!state.profile?.is_admin) return setImportStatus("Apenas admin pode importar.", true);
 
   const file = el.pdfInput.files?.[0];
-  if (!file) {
-    setImportStatus("Selecione um arquivo PDF/CSV antes de processar.", true);
-    return;
-  }
+  if (!file) return setImportStatus("Selecione um arquivo PDF/CSV antes de processar.", true);
 
   const parserUrl = getEffectiveParserUrl();
-  if (!parserUrl) {
-    setImportStatus("PARSER_API_URL não configurado em config.js.", true);
-    return;
-  }
+  if (!parserUrl) return setImportStatus("PARSER_API_URL não configurado em config.js.", true);
 
   setImportStatus("Processando arquivo...");
 
@@ -482,10 +615,9 @@ async function handleParsePdf() {
 
     const json = await response.json();
     validateParsedPayload(json);
+
     const parsedAssignments = countParsedAssignments(json);
-    if (!parsedAssignments) {
-      throw new Error("Arquivo processado sem lançamentos de dias. Verifique o CSV/PDF.");
-    }
+    if (!parsedAssignments) throw new Error("Arquivo processado sem lançamentos de dias.");
 
     state.parsedPayload = json;
     el.previewBox.textContent = JSON.stringify(json, null, 2);
@@ -502,7 +634,6 @@ async function handleParsePdf() {
 function getEffectiveParserUrl() {
   const raw = (parserApiUrl || "").trim();
   if (!raw) return "";
-  // Fallback defensivo para ambientes com cache antigo apontando para /parse-ai.
   return raw.replace(/\/parse-ai\/?$/i, "/parse");
 }
 
@@ -513,14 +644,10 @@ function validateParsedPayload(payload) {
 }
 
 async function handleSaveParsedData() {
-  if (!state.parsedPayload) {
-    setImportStatus("Nenhum parse disponível.", true);
-    return;
-  }
+  if (!state.parsedPayload) return setImportStatus("Nenhum parse disponível.", true);
 
   if (!countParsedAssignments(state.parsedPayload)) {
-    setImportStatus("Não há lançamentos para salvar. Revise o arquivo importado.", true);
-    return;
+    return setImportStatus("Não há lançamentos para salvar. Revise o arquivo importado.", true);
   }
 
   const { month, year } = state.parsedPayload.metadata;
@@ -541,13 +668,9 @@ async function handleSaveParsedData() {
 }
 
 async function persistParsedData(payload, { overwrite, existingSchedule }) {
-  if (!state.profile?.is_admin) {
-    setImportStatus("Apenas admin pode salvar.", true);
-    return;
-  }
+  if (!state.profile?.is_admin) return setImportStatus("Apenas admin pode salvar.", true);
 
   const { metadata, sectors, legend } = payload;
-
   setImportStatus("Salvando no banco...");
 
   try {
@@ -555,18 +678,12 @@ async function persistParsedData(payload, { overwrite, existingSchedule }) {
 
     if (existingSchedule && overwrite) {
       scheduleId = existingSchedule.id;
-      const { error: delError } = await supabase
-        .from("assignments")
-        .delete()
-        .eq("schedule_id", scheduleId);
+      const { error: delError } = await supabase.from("assignments").delete().eq("schedule_id", scheduleId);
       if (delError) throw delError;
 
       const { error: updError } = await supabase
         .from("schedules")
-        .update({
-          month_name: metadata.month_name || null,
-          source_filename: metadata.source_filename || null
-        })
+        .update({ month_name: metadata.month_name || null, source_filename: metadata.source_filename || null })
         .eq("id", scheduleId);
       if (updError) throw updError;
     } else {
@@ -592,25 +709,18 @@ async function persistParsedData(payload, { overwrite, existingSchedule }) {
       });
     });
 
-    const uniqueEmployees = Object.values(
-      employeeRows.reduce((acc, e) => {
-        acc[e.matricula] = e;
-        return acc;
-      }, {})
-    );
+    const uniqueEmployees = Object.values(employeeRows.reduce((acc, e) => {
+      acc[e.matricula] = e;
+      return acc;
+    }, {}));
 
     if (uniqueEmployees.length) {
-      const { error: upsertError } = await supabase
-        .from("employees")
-        .upsert(uniqueEmployees, { onConflict: "matricula" });
+      const { error: upsertError } = await supabase.from("employees").upsert(uniqueEmployees, { onConflict: "matricula" });
       if (upsertError) throw upsertError;
     }
 
-    const { data: allEmployees, error: allEmployeesError } = await supabase
-      .from("employees")
-      .select("id, matricula");
+    const { data: allEmployees, error: allEmployeesError } = await supabase.from("employees").select("id, matricula");
     if (allEmployeesError) throw allEmployeesError;
-
     const employeeByMatricula = new Map((allEmployees || []).map((e) => [e.matricula, e.id]));
 
     const assignmentRows = [];
@@ -637,35 +747,30 @@ async function persistParsedData(payload, { overwrite, existingSchedule }) {
       const { error: assignmentError } = await supabase
         .from("assignments")
         .upsert(assignmentRows, { onConflict: "schedule_id,employee_id,sector,day" });
-
       if (assignmentError) throw assignmentError;
     }
 
     if (legend && typeof legend === "object") {
       const legendRows = Object.entries(legend).map(([code, description]) => ({ code, description }));
       if (legendRows.length) {
-        const { error: legendError } = await supabase
-          .from("code_legend")
-          .upsert(legendRows, { onConflict: "code" });
-
+        const { error: legendError } = await supabase.from("code_legend").upsert(legendRows, { onConflict: "code" });
         if (legendError) throw legendError;
       }
     }
 
-    const savedCount = assignmentRows.length;
-    setImportStatus(
-      overwrite
-        ? `Escala sobrescrita com sucesso. ${savedCount} lançamento(s) gravado(s).`
-        : `Escala salva com sucesso. ${savedCount} lançamento(s) gravado(s).`
-    );
-
-    // Após salvar, sincroniza os filtros para o mês/ano importado.
     const importedMonth = String(metadata.month);
     const importedYear = String(metadata.year);
     el.calendarMonth.value = importedMonth;
     el.calendarYear.value = importedYear;
     el.profMonth.value = importedMonth;
     el.profYear.value = importedYear;
+    updateProfessionalMonthLabel();
+
+    setImportStatus(
+      overwrite
+        ? `Escala sobrescrita com sucesso. ${assignmentRows.length} lançamento(s) gravado(s).`
+        : `Escala salva com sucesso. ${assignmentRows.length} lançamento(s) gravado(s).`
+    );
 
     await loadEmployees();
     await refreshCalendarData();
@@ -685,9 +790,7 @@ function countParsedAssignments(payload) {
 function setImportStatus(message, isError = false) {
   el.importStatus.textContent = message;
   el.importStatus.style.color = isError ? "#af2f2f" : "";
-  if (isError) {
-    window.alert(message);
-  }
+  if (isError) window.alert(message);
 }
 
 function escapeHtml(value) {

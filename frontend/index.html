@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Escala Fisioterapia</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <link rel="stylesheet" href="./styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./config.js"></script>
@@ -11,26 +12,90 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
-      <h1>Escala de Fisioterapia</h1>
-      <p class="muted">Visualização pública com importação restrita ao administrador.</p>
+    <div class="topbar-main">
+      <h1 id="selectedEmployeeTitle">Escala de Fisioterapia</h1>
+      <p id="selectedEmployeeSubtitle" class="muted-light">Selecione um profissional para ver os detalhes.</p>
     </div>
     <div class="auth-actions">
       <button id="loginBtn">Entrar com Google (Admin)</button>
       <button id="logoutBtn" class="hidden">Sair</button>
     </div>
+    <div class="topbar-controls">
+      <div class="control-field grow">
+        <label for="employeeSelect">Profissional</label>
+        <select id="employeeSelect">
+          <option value="">Selecione um profissional...</option>
+        </select>
+      </div>
+      <div class="month-nav">
+        <button id="prevProfMonth" class="nav-btn" title="Mês anterior">&#x2039;</button>
+        <div id="profMonthLabel" class="month-chip">MÊS/ANO</div>
+        <button id="nextProfMonth" class="nav-btn" title="Próximo mês">&#x203A;</button>
+      </div>
+      <div class="hidden-selects">
+        <select id="profMonth"></select>
+        <select id="profYear"></select>
+      </div>
+    </div>
   </header>
 
-  <section id="authInfo" class="card"></section>
+  <section id="authInfo" class="status-banner"></section>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="calendar">Calendário</button>
-    <button class="tab" data-tab="professional">Profissional</button>
-    <button class="tab hidden" id="importTabBtn" data-tab="import">Importar</button>
+  <nav class="main-tabs">
+    <button class="tab active" data-tab="professional"><i class="fa-solid fa-user"></i> Profissional</button>
+    <button class="tab" data-tab="calendar"><i class="fa-solid fa-calendar-days"></i> Escala Geral</button>
+    <button class="tab hidden" id="importTabBtn" data-tab="import"><i class="fa-solid fa-file-import"></i> Importar</button>
   </nav>
 
   <main>
-    <section id="calendarTab" class="tab-content active">
+    <section id="professionalTab" class="tab-content active">
+      <section class="card summary-card">
+        <h3>Resumo do Mês</h3>
+        <div id="profSummary" class="summary-grid"></div>
+        <p id="nextWorkday" class="highlight"></p>
+      </section>
+
+      <nav class="sub-tabs">
+        <button class="prof-tab active" data-proftab="calendar"><i class="fa-solid fa-calendar-day"></i> Calendário</button>
+        <button class="prof-tab" data-proftab="workdays"><i class="fa-solid fa-list-check"></i> Dias de Trabalho</button>
+        <button class="prof-tab" data-proftab="coworkers"><i class="fa-solid fa-user-group"></i> Companheiros</button>
+        <button class="prof-tab" data-proftab="info"><i class="fa-solid fa-circle-info"></i> Informações</button>
+      </nav>
+
+      <section id="profCalendarContent" class="prof-content active">
+        <section class="card">
+          <h3 id="employeeCalendarTitle">Calendário do Profissional</h3>
+          <div id="employeeCalendarGrid" class="calendar-grid"></div>
+        </section>
+      </section>
+
+      <section id="profWorkdaysContent" class="prof-content">
+        <section class="card">
+          <h3>Todos os Dias de Trabalho</h3>
+          <div id="profAssignments"></div>
+        </section>
+      </section>
+
+      <section id="profCoworkersContent" class="prof-content">
+        <section class="card">
+          <h3>Com quem trabalha no dia selecionado</h3>
+          <div id="coworkersPanel">Selecione um dia na aba "Dias de Trabalho".</div>
+        </section>
+      </section>
+
+      <section id="profInfoContent" class="prof-content">
+        <section class="card">
+          <h3>Informações do Profissional</h3>
+          <div id="employeeInfoPanel">Selecione um profissional.</div>
+        </section>
+        <section class="card">
+          <h3>Estatísticas do Mês</h3>
+          <div id="codeStatsPanel"></div>
+        </section>
+      </section>
+    </section>
+
+    <section id="calendarTab" class="tab-content">
       <div class="filters card">
         <div>
           <label for="calendarMonth">Mês</label>
@@ -54,48 +119,13 @@
       </section>
     </section>
 
-    <section id="professionalTab" class="tab-content">
-      <div class="filters card">
-        <div>
-          <label for="profMonth">Mês</label>
-          <select id="profMonth"></select>
-        </div>
-        <div>
-          <label for="profYear">Ano</label>
-          <select id="profYear"></select>
-        </div>
-        <div class="wide">
-          <label for="employeeSearch">Profissional (nome ou matrícula)</label>
-          <input id="employeeSearch" list="employeeList" placeholder="Digite para buscar" />
-          <datalist id="employeeList"></datalist>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <section class="card">
-          <h3>Resumo do mês</h3>
-          <div id="profSummary"></div>
-          <p id="nextWorkday" class="highlight"></p>
-        </section>
-        <section class="card">
-          <h3>Escala do mês</h3>
-          <div id="profAssignments"></div>
-        </section>
-      </div>
-
-      <section class="card">
-        <h3>Com quem trabalha no dia selecionado</h3>
-        <div id="coworkersPanel">Selecione um dia na lista acima.</div>
-      </section>
-    </section>
-
     <section id="importTab" class="tab-content">
       <section class="card">
-        <h3>Importação de PDF</h3>
+        <h3>Importação de PDF/CSV</h3>
         <p>Somente administrador pode importar/sobrescrever escalas.</p>
         <div class="import-row">
-          <input type="file" id="pdfInput" accept="application/pdf" />
-          <button id="parseBtn">Processar PDF</button>
+          <input type="file" id="pdfInput" accept="application/pdf,.csv,text/csv" />
+          <button id="parseBtn">Processar arquivo</button>
           <button id="saveBtn" disabled>Salvar no banco</button>
         </div>
         <p id="importStatus" class="muted"></p>
@@ -107,6 +137,13 @@
       </section>
     </section>
   </main>
+
+  <nav class="mobile-nav">
+    <button class="mnav-btn active" data-proftab="calendar"><i class="fa-solid fa-calendar-day"></i><span>Calendário</span></button>
+    <button class="mnav-btn" data-proftab="workdays"><i class="fa-solid fa-list-check"></i><span>Trabalho</span></button>
+    <button class="mnav-btn" data-proftab="coworkers"><i class="fa-solid fa-user-group"></i><span>Equipe</span></button>
+    <button class="mnav-btn" data-proftab="info"><i class="fa-solid fa-circle-info"></i><span>Info</span></button>
+  </nav>
 
   <div id="dayModal" class="modal hidden">
     <div class="modal-content">
