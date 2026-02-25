@@ -1,0 +1,254 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <title>Sistema de Escalas - Fisioterapeutas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header móvel -->
+    <div class="mobile-header">
+        <h1 id="current-employee-name">Selecione um Fisioterapeuta</h1>
+        <p>Escala de Trabalho - Janeiro 2026</p>
+        
+        <div class="header-actions">
+            <div class="employee-selector">
+                <select id="employee-select">
+                    <option value="">Selecione um fisioterapeuta...</option>
+                    <!-- Opções serão preenchidas por JavaScript -->
+                </select>
+            </div>
+            
+            <div class="month-nav">
+                <button class="nav-btn" id="prev-month">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <div class="current-month" id="current-month">JANEIRO 2026</div>
+                <button class="nav-btn" id="next-month">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navegação por abas -->
+    <div class="tab-container">
+        <div class="tabs">
+            <div class="tab active" data-tab="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Calendário</span>
+            </div>
+            <div class="tab" data-tab="work-days">
+                <i class="fas fa-list-check"></i>
+                <span>Dias de Trabalho</span>
+            </div>
+            <div class="tab" data-tab="partners">
+                <i class="fas fa-user-group"></i>
+                <span>Companheiros</span>
+            </div>
+            <div class="tab" data-tab="info">
+                <i class="fas fa-user"></i>
+                <span>Informações</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container main-content">
+        <!-- Status Atual -->
+        <div id="current-status-container">
+            <!-- Será preenchido por JavaScript -->
+        </div>
+        
+        <!-- Resumo -->
+        <div class="summary-card">
+            <h2 class="mb-10" id="summary-title">Resumo do Mês</h2>
+            <div class="summary-stats">
+                <div class="stat">
+                    <div class="stat-value" id="total-work-days">0</div>
+                    <div class="stat-label">Dias de Trabalho</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="total-off-days">0</div>
+                    <div class="stat-label">Dias de Folga</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="next-work-in">-</div>
+                    <div class="stat-label" id="next-work-label">Próximo trabalho</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Conteúdo das abas -->
+        <!-- Aba Calendário -->
+        <div id="calendar-tab" class="tab-content active fade-in">
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-calendar-days"></i>
+                    <span id="calendar-title">Calendário de Janeiro 2026</span>
+                </h3>
+                
+                <div class="calendar-wrapper">
+                    <div class="weekdays">
+                        <div class="weekday">Dom</div>
+                        <div class="weekday">Seg</div>
+                        <div class="weekday">Ter</div>
+                        <div class="weekday">Qua</div>
+                        <div class="weekday">Qui</div>
+                        <div class="weekday">Sex</div>
+                        <div class="weekday">Sáb</div>
+                    </div>
+                    
+                    <div class="calendar-grid" id="calendar">
+                        <!-- Dias serão gerados por JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="legend mt-20">
+                    <div class="legend-item">
+                        <div class="legend-color legend-work-morning"></div>
+                        <span>Dia - Manhã/Tarde</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-work-night"></div>
+                        <span>Plantão Noturno</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-work"></div>
+                        <span>Plantão Completo</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color legend-off"></div>
+                        <span>Folga</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="border-color: var(--warning); background-color: rgba(255, 152, 0, 0.1);"></div>
+                        <span>Hoje</span>
+                    </div>
+                </div>
+                
+                <div class="last-updated" id="calendar-updated">
+                    <!-- Atualizado dinamicamente -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-clock"></i>
+                    Próximos Dias de Trabalho
+                </h3>
+                <div class="next-work-days-container" id="next-work-days">
+                    <!-- Próximos dias serão gerados dinamicamente -->
+                </div>
+                <div class="last-updated" id="next-work-updated">
+                    <!-- Atualizado dinamicamente -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aba Dias de Trabalho -->
+        <div id="work-days-tab" class="tab-content">
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-briefcase"></i>
+                    Todos os Dias de Trabalho
+                </h3>
+                
+                <div class="work-days-list" id="work-days-list">
+                    <!-- Lista de dias de trabalho será gerada por JavaScript -->
+                </div>
+                <div class="last-updated" id="work-days-updated">
+                    <!-- Atualizado dinamicamente -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aba Companheiros -->
+        <div id="partners-tab" class="tab-content">
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-user-group"></i>
+                    Equipe de Trabalho
+                </h3>
+                
+                <div class="partner-info-container" id="partner-info">
+                    <!-- Informações de companheiros serão geradas por JavaScript -->
+                </div>
+                
+                <div class="team-section">
+                    <h4 class="team-title">
+                        <i class="fas fa-people-arrows"></i>
+                        Passagem de Plantão
+                    </h4>
+                    <div class="handover-info" id="handover-info">
+                        <!-- Informações de passagem de plantão serão geradas por JavaScript -->
+                    </div>
+                </div>
+                
+                <div class="last-updated" id="partners-updated">
+                    <!-- Atualizado dinamicamente -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Aba Informações -->
+        <div id="info-tab" class="tab-content">
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-id-card"></i>
+                    Informações do Funcionário
+                </h3>
+                
+                <div class="employee-info" id="employee-details">
+                    <!-- Informações serão preenchidas por JavaScript -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-chart-pie"></i>
+                    Estatísticas do Mês
+                </h3>
+                
+                <div id="statistics-container">
+                    <!-- Estatísticas serão preenchidas por JavaScript -->
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">
+                    <i class="fas fa-key"></i>
+                    Legenda de Códigos
+                </h3>
+                
+                <div class="codes-grid" id="legend-codes">
+                    <!-- Legenda será preenchida por JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navegação inferior -->
+    <div class="bottom-nav">
+        <a href="#" class="nav-item active" data-tab="calendar">
+            <i class="fas fa-calendar-alt"></i>
+            <span>Calendário</span>
+        </a>
+        <a href="#" class="nav-item" data-tab="work-days">
+            <i class="fas fa-list-check"></i>
+            <span>Trabalho</span>
+        </a>
+        <a href="#" class="nav-item" data-tab="partners">
+            <i class="fas fa-user-group"></i>
+            <span>Equipe</span>
+        </a>
+        <a href="#" class="nav-item" data-tab="info">
+            <i class="fas fa-user"></i>
+            <span>Info</span>
+        </a>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,1113 @@
+﻿/* Reset e variáveis */
+:root {
+    --primary: #3a57e8;
+    --primary-dark: #2a46d0;
+    --secondary: #00acc1;
+    --tertiary: #4caf50;
+    --quaternary: #ff9800;
+    --light: #f8f9ff;
+    --dark: #182848;
+    --gray: #6c757d;
+    --light-gray: #e9ecef;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --border-radius: 12px;
+    --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --transition: all 0.3s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background-color: var(--light);
+    color: var(--dark);
+    line-height: 1.5;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+.container {
+    width: 100%;
+    max-width: 100%;
+    padding: 15px;
+}
+
+/* Header */
+.mobile-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 20px 15px;
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    box-shadow: var(--box-shadow);
+    margin-bottom: 20px;
+}
+
+.mobile-header h1 {
+    font-size: 1.4rem;
+    margin-bottom: 5px;
+    font-weight: 700;
+}
+
+.mobile-header p {
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
+.header-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.employee-selector {
+    flex: 1;
+    margin-right: 15px;
+}
+
+select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+    font-size: 0.9rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3e%3cpath d='M7 10l5 5 5-5z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+}
+
+select option {
+    color: var(--dark);
+    background: white;
+}
+
+.month-nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.nav-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(0.95);
+}
+
+.current-month {
+    font-weight: 600;
+    font-size: 1.1rem;
+    white-space: nowrap;
+}
+
+.print-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.print-btn:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Cards */
+.card {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+}
+
+.card:active {
+    transform: translateY(-2px);
+}
+
+.card-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-title i {
+    color: var(--primary);
+}
+
+/* Employee Info */
+.employee-info {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+}
+
+.info-label {
+    font-weight: 600;
+    min-width: 110px;
+    color: var(--primary);
+    font-size: 0.95rem;
+}
+
+.info-value {
+    color: var(--dark);
+    font-size: 0.95rem;
+}
+
+/* Calendar */
+.calendar-wrapper {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 10px;
+    background: white;
+    padding: 5px;
+}
+
+.weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 4px;
+    text-align: center;
+    width: 100%;
+}
+
+.weekday {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray);
+    padding: 8px 2px;
+    text-align: center;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    width: 100%;
+}
+
+.day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    transition: var(--transition);
+    position: relative;
+    padding: 3px;
+    border: 1px solid transparent;
+    min-height: 42px;
+    width: 100%;
+}
+
+.day-number {
+    font-weight: 600;
+    margin-bottom: 1px;
+    font-size: 0.85rem;
+}
+
+.day-code {
+    font-size: 0.6rem;
+    font-weight: 600;
+}
+
+.day.work {
+    background-color: rgba(0, 172, 193, 0.1);
+    border-color: var(--secondary);
+    color: #006064;
+}
+
+.day.work-morning {
+    background-color: rgba(76, 175, 80, 0.1);
+    border-color: var(--tertiary);
+    color: #2e7d32;
+}
+
+.day.work-night {
+    background-color: rgba(255, 152, 0, 0.1);
+    border-color: var(--quaternary);
+    color: #ef6c00;
+}
+
+.day.off {
+    background-color: var(--light-gray);
+    color: var(--gray);
+}
+
+.day.empty {
+    visibility: hidden;
+    border: none;
+    background: transparent;
+    pointer-events: none;
+}
+
+.day.today {
+    position: relative;
+    border-color: var(--warning);
+    background-color: rgba(255, 152, 0, 0.1);
+}
+
+.day.today .day-number {
+    font-weight: 800;
+    color: var(--warning);
+}
+
+.day.selected {
+    box-shadow: 0 0 0 2px rgba(58, 87, 232, 0.3);
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+/* Legend */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+}
+
+.legend-color {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+}
+
+.legend-work {
+    background-color: rgba(0, 172, 193, 0.1);
+    border: 1px solid var(--secondary);
+}
+
+.legend-work-morning {
+    background-color: rgba(76, 175, 80, 0.1);
+    border: 1px solid var(--tertiary);
+}
+
+.legend-work-night {
+    background-color: rgba(255, 152, 0, 0.1);
+    border: 1px solid var(--quaternary);
+}
+
+.legend-off {
+    background-color: var(--light-gray);
+    border: 1px solid var(--gray);
+}
+
+/* Work Days List */
+.work-days-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.work-day-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background-color: rgba(0, 172, 193, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary);
+}
+
+.work-day-item.morning {
+    background-color: rgba(76, 175, 80, 0.05);
+    border-left-color: var(--tertiary);
+}
+
+.work-day-item.night {
+    background-color: rgba(255, 152, 0, 0.05);
+    border-left-color: var(--quaternary);
+}
+
+.work-day-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 60px;
+    padding-right: 12px;
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.work-day-number {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.work-day-weekday {
+    font-size: 0.7rem;
+    color: var(--gray);
+    text-transform: uppercase;
+}
+
+.work-day-details {
+    padding-left: 12px;
+    flex: 1;
+}
+
+.work-day-code {
+    display: inline-block;
+    background-color: var(--primary);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 15px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.work-day-partners {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.partner-badge {
+    display: inline-block;
+    background-color: var(--light-gray);
+    color: var(--dark);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+}
+
+.handover-badge {
+    display: inline-block;
+    background-color: var(--primary-dark);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* Partner Info */
+.partner-info-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.partner-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background-color: white;
+    border-radius: 8px;
+    border-left: 4px solid var(--secondary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.partner-name {
+    font-weight: 600;
+    color: var(--dark);
+    font-size: 0.9rem;
+}
+
+.partner-shift {
+    font-size: 0.75rem;
+    color: var(--gray);
+    margin-top: 2px;
+}
+
+/* Current Work Status */
+.current-status {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.current-status.off {
+    background: linear-gradient(135deg, #ff9800 0%, #ef6c00 100%);
+}
+
+.current-status.night {
+    background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);
+}
+
+.status-text {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.status-subtext {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    margin-top: 3px;
+}
+
+/* Next Work Days - ESTILO MELHORADO */
+.next-work-days-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 5px;
+}
+
+.next-day-item {
+    display: flex;
+    align-items: stretch;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(58, 87, 232, 0.1);
+    border: 1px solid rgba(58, 87, 232, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.next-day-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(58, 87, 232, 0.15);
+}
+
+.next-day-item.today {
+    background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%);
+    border-color: rgba(0, 172, 193, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 172, 193, 0.15);
+}
+
+.next-day-item.today::before {
+    content: "HOJE";
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    z-index: 2;
+}
+
+.next-day-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 70px;
+    padding: 15px 10px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+}
+
+.next-day-number {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.next-day-weekday {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.next-day-content {
+    flex: 1;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.next-day-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.next-day-code {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--secondary) 0%, #00838f 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0, 172, 193, 0.2);
+}
+
+.next-day-shift {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.next-day-description {
+    font-size: 0.85rem;
+    color: var(--dark);
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.next-day-partners {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.partner-label {
+    font-size: 0.7rem;
+    color: var(--gray);
+    font-weight: 600;
+}
+
+.partner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(58, 87, 232, 0.1);
+    color: var(--primary);
+    padding: 3px 10px;
+    border-radius: 15px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.partner-badge i {
+    font-size: 0.6rem;
+    opacity: 0.7;
+}
+
+.handover-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: rgba(255, 152, 0, 0.08);
+    border-radius: 8px;
+    border-left: 3px solid var(--quaternary);
+}
+
+.handover-icon {
+    color: var(--quaternary);
+    font-size: 0.8rem;
+}
+
+.handover-text {
+    font-size: 0.75rem;
+    color: var(--dark);
+    font-weight: 600;
+}
+
+.handover-name {
+    color: var(--quaternary);
+    font-weight: 700;
+}
+
+.next-day-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.next-day-distance {
+    font-size: 0.7rem;
+    color: var(--gray);
+    font-weight: 600;
+}
+
+.next-day-time {
+    font-size: 0.7rem;
+    color: var(--secondary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.next-day-time i {
+    font-size: 0.6rem;
+}
+
+/* Cores diferentes para códigos diferentes */
+.next-day-item .next-day-code.pcti {
+    background: linear-gradient(135deg, #00acc1 0%, #00838f 100%);
+}
+
+.next-day-item .next-day-code.mcti {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+}
+
+.next-day-item .next-day-code.puco {
+    background: linear-gradient(135deg, #ff9800 0%, #ef6c00 100%);
+}
+
+.next-day-item .next-day-code.p {
+    background: linear-gradient(135deg, #3a57e8 0%, #2a46d0 100%);
+}
+
+/* Summary Card */
+.summary-card {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 15px;
+    border-radius: var(--border-radius);
+    margin-bottom: 15px;
+    box-shadow: var(--box-shadow);
+}
+
+.summary-stats {
+    display: flex;
+    justify-content: space-between;
+    text-align: center;
+    margin-top: 12px;
+}
+
+.stat {
+    flex: 1;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    margin-top: 3px;
+}
+
+/* Tab Navigation */
+.tab-container {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    background-color: white;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--light-gray);
+}
+
+.tabs {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 10px;
+}
+
+.tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.tab {
+    flex: 0 0 auto;
+    padding: 12px 15px;
+    font-weight: 600;
+    color: var(--gray);
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: var(--transition);
+    font-size: 0.85rem;
+}
+
+.tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border-top: 1px solid var(--light-gray);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0;
+    z-index: 100;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray);
+    text-decoration: none;
+    font-size: 0.7rem;
+    padding: 4px;
+    transition: var(--transition);
+    flex: 1;
+}
+
+.nav-item i {
+    font-size: 1.1rem;
+    margin-bottom: 3px;
+}
+
+.nav-item.active {
+    color: var(--primary);
+}
+
+.main-content {
+    padding-bottom: 65px; /* Espaço para a navegação inferior */
+}
+
+/* Responsividade adicional */
+@media (min-width: 768px) {
+    .container {
+        max-width: 750px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .mobile-header {
+        padding: 25px 20px;
+    }
+    
+    .mobile-header h1 {
+        font-size: 1.6rem;
+    }
+    
+    .day {
+        min-height: 55px;
+    }
+}
+
+@media (max-width: 350px) {
+    .day {
+        min-height: 38px;
+        font-size: 0.7rem;
+        padding: 2px;
+    }
+    
+    .day-number {
+        font-size: 0.75rem;
+    }
+    
+    .day-code {
+        font-size: 0.55rem;
+    }
+    
+    .weekday {
+        font-size: 0.7rem;
+        padding: 6px 1px;
+    }
+}
+
+@media (max-width: 380px) {
+    .next-day-item {
+        flex-direction: column;
+    }
+    
+    .next-day-date {
+        min-width: 100%;
+        flex-direction: row;
+        justify-content: center;
+        gap: 15px;
+        padding: 10px;
+    }
+    
+    .next-day-number {
+        font-size: 1.5rem;
+    }
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease forwards;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Utilitários */
+.hidden {
+    display: none !important;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mb-10 {
+    margin-bottom: 10px;
+}
+
+.mb-15 {
+    margin-bottom: 15px;
+}
+
+.mt-10 {
+    margin-top: 10px;
+}
+
+.mt-20 {
+    margin-top: 20px;
+}
+
+.no-work-days {
+    text-align: center;
+    padding: 15px;
+    color: var(--gray);
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.last-updated {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--gray);
+    margin-top: 10px;
+    font-style: italic;
+}
+
+.team-section {
+    margin-top: 20px;
+}
+
+.team-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.handover-info {
+    background-color: rgba(255, 255, 255, 0.9);
+    border-left: 4px solid var(--quaternary);
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+    font-size: 0.8rem;
+}
+
+.handover-label {
+    font-weight: 600;
+    color: var(--quaternary);
+    margin-right: 5px;
+}
+
+/* Adicione estas classes no CSS existente */
+
+.day.work-afternoon {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-color: #ffc107;
+    color: #ff8f00;
+}
+
+.legend-work-afternoon {
+    background-color: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+}
+
+.next-day-item .next-day-code.m {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+}
+
+.next-day-item .next-day-code.t {
+    background: linear-gradient(135deg, #ff9800 0%, #ef6c00 100%);
+}
+
+.next-day-item .next-day-code.mt {
+    background: linear-gradient(135deg, #4caf50 0%, #ff9800 100%);
+}
+
+.next-day-item .next-day-code.tuco {
+    background: linear-gradient(135deg, #ff9800 0%, #ef6c00 100%);
+}
+
+.next-day-item .next-day-code.muco {
+    background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+}
+
+.next-day-item .next-day-code.pun {
+    background: linear-gradient(135deg, #9c27b0 0%, #6a1b9a 100%);
+}
+
+.next-day-item .next-day-code.tun {
+    background: linear-gradient(135deg, #ff9800 0%, #ef6c00 100%);
+}
+
+/* Adicione ao final do CSS existente */
+
+/* Estilos para turnos diferentes */
+.work-day-item.afternoon {
+    background-color: rgba(255, 193, 7, 0.05);
+    border-left-color: #ffc107;
+}
+
+.work-day-item.vacation {
+    background-color: rgba(233, 30, 99, 0.05);
+    border-left-color: #e91e63;
+}
+
+/* Estilos para badges de turnos */
+.shift-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
+
+.shift-badge.morning {
+    background-color: rgba(76, 175, 80, 0.2);
+    color: #2e7d32;
+}
+
+.shift-badge.afternoon {
+    background-color: rgba(255, 152, 0, 0.2);
+    color: #ef6c00;
+}
+
+.shift-badge.night {
+    background-color: rgba(156, 39, 176, 0.2);
+    color: #7b1fa2;
+}
+
+.shift-badge.full {
+    background-color: rgba(58, 87, 232, 0.2);
+    color: #2a46d0;
+}
+
+/* Melhorias para informações de equipe */
+.partner-details {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: rgba(0, 172, 193, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid var(--secondary);
+}
+
+.partner-day {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 6px;
+    background-color: white;
+    border-radius: 6px;
+}
+
+.partner-day-date {
+    min-width: 40px;
+    text-align: center;
+    font-weight: 600;
+    color: var(--primary);
+    font-size: 0.9rem;
+}
+
+.partner-day-info {
+    flex: 1;
+    margin-left: 10px;
+}
+
+.partner-day-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.partner-day-shift {
+    font-size: 0.7rem;
+    color: var(--gray);
+}
