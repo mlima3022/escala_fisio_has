@@ -463,7 +463,8 @@ function showDayDetails(day, rows) {
         .map((row) => {
           const name = row.employees?.name || "Sem nome";
           const matricula = row.employees?.matricula || "-";
-          return `<div class="list-row"><span>${escapeHtml(name)} (${escapeHtml(matricula)})</span><span>${escapeHtml(row.code)} | ${escapeHtml(row.role || "-")} | ${escapeHtml(row.shift_hours || "-")}</span></div>`;
+          const effectiveHours = getEffectiveShiftHours(row.code, row.shift_hours);
+          return `<div class="list-row"><span>${escapeHtml(name)} (${escapeHtml(matricula)})</span><span>${escapeHtml(row.code)} | ${escapeHtml(row.role || "-")} | ${escapeHtml(effectiveHours || "-")}</span></div>`;
         })
         .join("");
       return `<section><h4>${escapeHtml(sector)}</h4>${people}</section>`;
@@ -612,7 +613,7 @@ async function renderProfessional() {
             <span class="workday-badge">${status}</span>
           </div>
           ${isOff ? "" : `<div class="workday-meta">${escapeHtml(r.sector)} • Código: <strong>${escapeHtml(r.code)}</strong></div>
-          <div class="workday-meta">Função: ${escapeHtml(r.role || "-")} • Horário: ${escapeHtml(r.shift_hours || "-")}</div>`}
+          <div class="workday-meta">Função: ${escapeHtml(r.role || "-")} • Horário: ${escapeHtml(getEffectiveShiftHours(r.code, r.shift_hours) || "-")}</div>`}
           ${isOff ? "" : `<div style="margin-top:8px;">
             <button class="show-coworkers" data-day="${r.day}" data-sector="${escapeHtml(r.sector)}" data-employee="${employee.id}" data-schedule="${schedule.id}">👥 Ver companheiros do dia</button>
           </div>`}
@@ -910,6 +911,12 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function getEffectiveShiftHours(code, fallbackShiftHours) {
+  const normalized = String(code || "").trim().toUpperCase();
+  if (normalized === "M") return "07:00 às 13:00";
+  return fallbackShiftHours || "";
 }
 
 function getOAuthRedirectUrl() {
