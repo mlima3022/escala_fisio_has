@@ -89,9 +89,10 @@ async function init() {
   setupDateSelects();
   bindEvents();
 
+  await syncToLatestSchedule();
   await loadSession();
-  await loadEmployees();
   await refreshCalendarData();
+  await loadEmployees();
   await renderProfessional();
 }
 
@@ -358,6 +359,26 @@ async function refreshCalendarData() {
   renderCalendar();
 }
 
+async function syncToLatestSchedule() {
+  const { data, error } = await supabase
+    .from("schedules")
+    .select("month, year")
+    .order("year", { ascending: false })
+    .order("month", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return;
+
+  const month = String(data.month);
+  const year = String(data.year);
+  el.calendarMonth.value = month;
+  el.calendarYear.value = year;
+  el.profMonth.value = month;
+  el.profYear.value = year;
+  updateProfessionalMonthLabel();
+}
+
 function hydrateCalendarFilters() {
   const sectors = [...new Set(state.currentAssignments.map((x) => x.sector))].sort();
   const codes = [...new Set(state.currentAssignments.map((x) => x.code))].sort();
@@ -458,7 +479,28 @@ async function loadEmployees() {
 
   if (error) throw error;
 
-  state.employees = data || [];
+  let employees = data || [];
+
+  // Fallback: quando employees vier vazio, tenta derivar da escala atual.
+  if (!employees.length && state.currentSchedule?.id) {
+    const { data: rows } = await supabase
+      .from("assignments")
+      .select("employee_id, employees(name, matricula)")
+      .eq("schedule_id", state.currentSchedule.id);
+
+    const unique = new Map();
+    (rows || []).forEach((row) => {
+      if (!row.employee_id || !row.employees?.name || !row.employees?.matricula) return;
+      unique.set(row.employee_id, {
+        id: row.employee_id,
+        name: row.employees.name,
+        matricula: row.employees.matricula
+      });
+    });
+    employees = [...unique.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  state.employees = employees;
 
   const current = el.employeeSelect.value;
   el.employeeSelect.innerHTML = [
@@ -470,6 +512,8 @@ async function loadEmployees() {
     el.employeeSelect.value = current;
   } else if (state.employees.length) {
     el.employeeSelect.value = state.employees[0].id;
+  } else {
+    setAuthInfo("Sem profissionais disponíveis para o mês atual. Verifique se a escala foi importada.");
   }
 }
 
